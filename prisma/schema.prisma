@@ -1,0 +1,429 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum RolUsuario {
+  ADMIN
+  OWNER
+  CLIENT
+}
+
+enum NavbarStyle {
+  TRANSPARENT
+  SOLID
+  STICKY
+}
+
+enum HeroLayout {
+  CENTERED
+  LEFT
+  SPLIT
+  FULLSCREEN
+}
+
+enum CardStyle {
+  MINIMAL
+  ROUNDED
+  BOLD
+  ELEGANT
+  PLAYFUL
+}
+
+enum BorderRadius {
+  NONE
+  SM
+  MD
+  LG
+  FULL
+}
+
+// ─────────────────────────────────────────────
+// USUARIO
+// ─────────────────────────────────────────────
+
+model Usuario {
+  id                    Int      @id @default(autoincrement())
+  nombre                String   @db.VarChar(100)
+  apellido              String   @db.VarChar(100)
+  email                 String   @unique @db.VarChar(180)
+  passwordHash          String   @db.VarChar(255)
+  rol                   RolUsuario @default(CLIENT)
+  telefono              String?  @db.VarChar(30)
+  avatarUrl             String?  @db.VarChar(500)
+  emailVerificado       Boolean  @default(false)
+  tokenVerificacion     String?  @db.VarChar(100)
+  tokenVencVerificacion DateTime?
+  tokenResetPass        String?  @db.VarChar(100)
+  tokenVencReset        DateTime?
+  activo                Boolean  @default(true)
+  creadoEn              DateTime @default(now())
+  actualizadoEn         DateTime @updatedAt
+
+  tienda              Tienda?
+  resenasProducto     ResenaProducto[]
+  resenasTienda       ResenaTienda[]
+  logBusquedas        LogBusqueda[]
+
+  @@map("usuarios")
+}
+
+// ─────────────────────────────────────────────
+// PLANTILLA
+// ─────────────────────────────────────────────
+
+model PlantillaTienda {
+  id            Int      @id @default(autoincrement())
+  nombre        String   @db.VarChar(80)
+  descripcion   String?  @db.Text
+  previewUrl    String?  @db.VarChar(500)
+  defaultConfig Json?
+  sortOrder     Int      @default(0)
+  activo        Boolean  @default(true)
+
+  tiendas       Tienda[]
+
+  @@map("plantillas_tienda")
+}
+
+// ─────────────────────────────────────────────
+// TIENDA
+// ─────────────────────────────────────────────
+
+model Tienda {
+  id            Int      @id @default(autoincrement())
+  usuarioId     Int      @unique
+  plantillaId   Int?
+  slug          String   @unique @db.VarChar(120)
+  nombre        String   @db.VarChar(150)
+  titulo        String?  @db.VarChar(200)
+  descripcion   String?  @db.Text
+  logoUrl       String?  @db.VarChar(500)
+  bannerUrl     String?  @db.VarChar(500)
+  whatsapp      String?  @db.VarChar(30)
+  instagram     String?  @db.VarChar(100)
+  facebook      String?  @db.VarChar(100)
+  sitioWeb      String?  @db.VarChar(255)
+  pais          String?  @db.VarChar(80)
+  provincia     String?  @db.VarChar(80)
+  ciudad        String?  @db.VarChar(80)
+  activa        Boolean  @default(true)
+  publica       Boolean  @default(true)
+  vistas        Int      @default(0)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  usuario        Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  plantilla      PlantillaTienda?  @relation(fields: [plantillaId], references: [id])
+  temaConfig     TiendaTemaConfig?
+  metodosPago    MetodoPagoTienda[]
+  metodosEntrega MetodoEntregaTienda[]
+  productos      Producto[]
+  carrusel       CarruselImagen[]
+  resenas        ResenaTienda[]
+
+  @@index([usuarioId])
+  @@index([plantillaId])
+  @@map("tiendas")
+}
+
+// ─────────────────────────────────────────────
+// TEMA CONFIG
+// ─────────────────────────────────────────────
+
+model TiendaTemaConfig {
+  tiendaId          Int    @id
+  colorPrimario     String? @db.Char(7)
+  colorSecundario   String? @db.Char(7)
+  colorAcento       String? @db.Char(7)
+  colorFondo        String? @db.Char(7)
+  colorTexto        String? @db.Char(7)
+  colorBoton        String? @db.Char(7)
+  colorTextoBoton   String? @db.Char(7)
+  colorNavbarBg     String? @db.Char(7)
+  colorNavbarText   String? @db.Char(7)
+  fuenteTitulo      String? @db.VarChar(150)
+  fuenteCuerpo      String? @db.VarChar(150)
+  navbarStyle       NavbarStyle?
+  heroLayout        HeroLayout?
+  cardStyle         CardStyle?
+  borderRadius      BorderRadius?
+  heroTitulo        String? @db.VarChar(200)
+  heroSubtitulo     String? @db.VarChar(300)
+  heroCtaTexto      String? @db.VarChar(100)
+  cardMostrarPrecio Boolean @default(true)
+  cardMostrarBadge  Boolean @default(true)
+  seccionesVisibles Json?
+  creadoEn          DateTime @default(now())
+  actualizadoEn     DateTime @updatedAt
+
+  tienda            Tienda @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@map("tienda_tema_config")
+}
+
+// ─────────────────────────────────────────────
+// CATÁLOGO MÉTODOS DE PAGO
+// ─────────────────────────────────────────────
+
+model MetodoPago {
+  id          Int                @id @default(autoincrement())
+  nombre      String             @unique @db.VarChar(80)
+  icono       String?            @db.VarChar(50)
+  descripcion String?            @db.VarChar(255)
+  activo      Boolean            @default(true)
+  orden       Int                @default(0)
+
+  tiendas     MetodoPagoTienda[]
+
+  @@map("metodos_pago")
+}
+
+// ─────────────────────────────────────────────
+// CATÁLOGO MÉTODOS DE ENTREGA
+// ─────────────────────────────────────────────
+
+model MetodoEntrega {
+  id           Int                   @id @default(autoincrement())
+  nombre       String                @unique @db.VarChar(80)
+  icono        String?               @db.VarChar(50)
+  descripcion  String?               @db.VarChar(255)
+  permiteZona  Boolean               @default(false)
+  activo       Boolean               @default(true)
+  orden        Int                   @default(0)
+
+  tiendas      MetodoEntregaTienda[]
+
+  @@map("metodos_entrega")
+}
+
+// ─────────────────────────────────────────────
+// RELACIÓN TIENDA - MÉTODO DE PAGO
+// ─────────────────────────────────────────────
+
+model MetodoPagoTienda {
+  tiendaId     Int
+  metodoPagoId Int
+  detalle      String?    @db.VarChar(255)
+
+  tienda       Tienda     @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  metodoPago   MetodoPago @relation(fields: [metodoPagoId], references: [id], onDelete: Restrict)
+
+  @@id([tiendaId, metodoPagoId])
+  @@index([metodoPagoId])
+  @@map("metodos_pago_tienda")
+}
+
+// ─────────────────────────────────────────────
+// RELACIÓN TIENDA - MÉTODO DE ENTREGA
+// ─────────────────────────────────────────────
+
+model MetodoEntregaTienda {
+  tiendaId        Int
+  metodoEntregaId Int
+  zonaCobertura   String?       @db.VarChar(255)
+  detalle         String?       @db.VarChar(255)
+
+  tienda          Tienda        @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  metodoEntrega   MetodoEntrega @relation(fields: [metodoEntregaId], references: [id], onDelete: Restrict)
+
+  @@id([tiendaId, metodoEntregaId])
+  @@index([metodoEntregaId])
+  @@map("metodos_entrega_tienda")
+}
+
+// ─────────────────────────────────────────────
+// CARRUSEL / GALERÍA DE LA TIENDA
+// ─────────────────────────────────────────────
+
+model CarruselImagen {
+  id        Int      @id @default(autoincrement())
+  tiendaId  Int
+  url       String   @db.VarChar(500)
+  titulo    String?  @db.VarChar(200)
+  subtitulo String?  @db.VarChar(300)
+  linkUrl   String?  @db.VarChar(500)
+  orden     Int      @default(0)
+  activa    Boolean  @default(true)
+
+  tienda    Tienda   @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@index([tiendaId])
+  @@map("carrusel_imagenes")
+}
+
+// ─────────────────────────────────────────────
+// CATEGORÍAS
+// ─────────────────────────────────────────────
+
+model Categoria {
+  id        Int         @id @default(autoincrement())
+  padreId   Int?
+  nombre    String      @db.VarChar(100)
+  slug      String      @unique @db.VarChar(120)
+  iconoUrl  String?     @db.VarChar(500)
+  activa    Boolean     @default(true)
+
+  padre     Categoria?  @relation("CategoriaHijos", fields: [padreId], references: [id])
+  hijos     Categoria[] @relation("CategoriaHijos")
+  productos Producto[]
+
+  @@index([padreId])
+  @@map("categorias")
+}
+
+// ─────────────────────────────────────────────
+// TAGS
+// ─────────────────────────────────────────────
+
+model Tag {
+  id        Int       @id @default(autoincrement())
+  nombre    String    @unique @db.VarChar(80)
+  productos Producto[]
+
+  @@map("tags")
+}
+
+// ─────────────────────────────────────────────
+// PRODUCTO
+// ─────────────────────────────────────────────
+
+model Producto {
+  id                 Int      @id @default(autoincrement())
+  tiendaId           Int
+  categoriaId        Int?
+  nombre             String   @db.VarChar(200)
+  descripcion        String?  @db.Text
+  precio             Decimal  @db.Decimal(12, 2)
+  precioOferta       Decimal? @db.Decimal(12, 2)
+  moneda             String   @default("ARS") @db.Char(3)
+  imagenPrincipalUrl String?  @db.VarChar(500)
+  disponible         Boolean  @default(true)
+  destacado          Boolean  @default(false)
+  vistas             Int      @default(0)
+  creadoEn           DateTime @default(now())
+  actualizadoEn      DateTime @updatedAt
+
+  tienda    Tienda     @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  categoria Categoria? @relation(fields: [categoriaId], references: [id])
+  imagenes  ProductoImagen[]
+  variantes ProductoVariante[]
+  tags      Tag[]
+  resenas   ResenaProducto[]
+
+  @@index([tiendaId])
+  @@index([categoriaId])
+  @@map("productos")
+}
+
+// ─────────────────────────────────────────────
+// IMÁGENES DEL PRODUCTO
+// ─────────────────────────────────────────────
+
+model ProductoImagen {
+  id         Int      @id @default(autoincrement())
+  productoId Int
+  url        String   @db.VarChar(500)
+  orden      Int      @default(0)
+
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@index([productoId])
+  @@map("producto_imagenes")
+}
+
+// ─────────────────────────────────────────────
+// VARIANTES DEL PRODUCTO
+// ─────────────────────────────────────────────
+
+model ProductoVariante {
+  id          Int      @id @default(autoincrement())
+  productoId  Int
+  nombre      String   @db.VarChar(150)
+  sku         String?  @db.VarChar(100)
+  precioExtra Decimal  @default(0.00) @db.Decimal(10, 2)
+  imagenUrl   String?  @db.VarChar(500)
+  disponible  Boolean  @default(true)
+
+  producto    Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@index([productoId])
+  @@map("producto_variantes")
+}
+
+// ─────────────────────────────────────────────
+// RESEÑAS DE TIENDA
+// ─────────────────────────────────────────────
+
+model ResenaTienda {
+  id           Int       @id @default(autoincrement())
+  tiendaId     Int
+  usuarioId    Int?
+  autorNombre  String?   @db.VarChar(100)
+  calificacion Int
+  comentario   String?   @db.Text
+  aprobada     Boolean   @default(false)
+  eliminada    Boolean   @default(false)
+  respuesta    String?   @db.Text
+  respuestaEn  DateTime?
+  creadoEn     DateTime  @default(now())
+
+  tienda       Tienda    @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  usuario      Usuario?  @relation(fields: [usuarioId], references: [id])
+
+  @@index([tiendaId])
+  @@index([usuarioId])
+  @@map("resenas_tienda")
+}
+
+// ─────────────────────────────────────────────
+// RESEÑAS DE PRODUCTO
+// ─────────────────────────────────────────────
+
+model ResenaProducto {
+  id           Int       @id @default(autoincrement())
+  productoId   Int
+  usuarioId    Int?
+  autorNombre  String?   @db.VarChar(100)
+  calificacion Int
+  comentario   String?   @db.Text
+  aprobada     Boolean   @default(false)
+  eliminada    Boolean   @default(false)
+  respuesta    String?   @db.Text
+  respuestaEn  DateTime?
+  creadoEn     DateTime  @default(now())
+
+  producto     Producto  @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  usuario      Usuario?  @relation(fields: [usuarioId], references: [id])
+
+  @@index([productoId])
+  @@index([usuarioId])
+  @@map("resenas_producto")
+}
+
+// ─────────────────────────────────────────────
+// LOG DE BÚSQUEDAS
+// ─────────────────────────────────────────────
+
+model LogBusqueda {
+  id         BigInt   @id @default(autoincrement())
+  termino    String   @db.VarChar(255)
+  tiendaId   Int?
+  usuarioId  Int?
+  resultados Int?     @default(0)
+  creadoEn   DateTime @default(now())
+
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id])
+
+  @@index([usuarioId])
+  @@index([tiendaId])
+  @@map("log_busquedas")
+}

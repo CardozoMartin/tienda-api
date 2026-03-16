@@ -1,0 +1,132 @@
+// Repository de autenticación.
+// Responsabilidad única: operaciones de DB relacionadas con auth.
+// No contiene lógica de negocio, solo acceso a datos.
+import { prisma } from "../../config/prisma";
+
+// Definimos el tipo Usuario localmente para no depender del cliente generado.
+// Cuando Prisma genera el cliente, este tipo coincide exactamente.
+interface UsuarioModel {
+  id: number;
+  nombre: string;
+  apellido: string;
+  email: string;
+  passwordHash: string;
+  rol: string;
+  telefono: string | null;
+  avatarUrl: string | null;
+  emailVerificado: boolean;
+  tokenVerificacion: string | null;
+  tokenVencVerificacion: Date | null;
+  tokenResetPass: string | null;
+  tokenVencReset: Date | null;
+  activo: boolean;
+  creadoEn: Date;
+  actualizadoEn: Date;
+}
+
+export class AuthRepository {
+  /**
+   * Busca un usuario por email.
+   * Incluye el passwordHash para validación, a diferencia de otras queries
+   * que lo omiten por seguridad.
+   */
+  async buscarPorEmail(email: string): Promise<UsuarioModel | null> {
+    return prisma.usuario.findUnique({
+      where: { email },
+    });
+  }
+
+  /**
+   * Busca un usuario por su ID.
+   */
+  async buscarPorId(id: number): Promise<UsuarioModel | null> {
+    return prisma.usuario.findUnique({
+      where: { id },
+    });
+  }
+
+  /**
+   * Crea un nuevo usuario.
+   * El passwordHash ya viene hasheado desde el service.
+   */
+  async crear(datos: {
+    nombre: string;
+    apellido: string;
+    email: string;
+    passwordHash: string;
+    telefono?: string;
+    tokenVerificacion: string;
+    tokenVencVerificacion: Date;
+  }): Promise<UsuarioModel> {
+    return prisma.usuario.create({
+      data: datos,
+    });
+  }
+
+  /**
+   * Verifica el email del usuario usando el token de verificación.
+   * Limpia el token después de verificar.
+   */
+  async verificarEmail(usuarioId: number): Promise<UsuarioModel> {
+    return prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        emailVerificado: true,
+        tokenVerificacion: null,
+        tokenVencVerificacion: null,
+      },
+    });
+  }
+
+  /**
+   * Busca un usuario por su token de verificación de email.
+   */
+  async buscarPorTokenVerificacion(token: string): Promise<UsuarioModel | null> {
+    return prisma.usuario.findFirst({
+      where: { tokenVerificacion: token },
+    });
+  }
+
+  /**
+   * Guarda un token de reset de contraseña con su fecha de vencimiento.
+   */
+  async guardarTokenReset(
+    usuarioId: number,
+    token: string,
+    vencimiento: Date
+  ): Promise<void> {
+    await prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        tokenResetPass: token,
+        tokenVencReset: vencimiento,
+      },
+    });
+  }
+
+  /**
+   * Busca un usuario por su token de reset de contraseña.
+   */
+  async buscarPorTokenReset(token: string): Promise<UsuarioModel | null> {
+    return prisma.usuario.findFirst({
+      where: { tokenResetPass: token },
+    });
+  }
+
+  /**
+   * Actualiza la contraseña y limpia el token de reset.
+   */
+  async actualizarPassword(
+    usuarioId: number,
+    nuevoHash: string
+  ): Promise<void> {
+    await prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        passwordHash: nuevoHash,
+        tokenResetPass: null,
+        tokenVencReset: null,
+      },
+    });
+  }
+}
