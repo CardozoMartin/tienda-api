@@ -1,7 +1,7 @@
 // Servicio de envío de emails.
 // Centraliza todas las plantillas y lógica de envío de emails.
-import { transporter } from "../config/mailer";
-import { env } from "../config/env";
+import { env } from '../config/env';
+import { transporter } from '../config/mailer';
 
 interface OpcionesEmail {
   para: string;
@@ -28,7 +28,7 @@ export async function enviarEmail(opciones: OpcionesEmail): Promise<boolean> {
     // En desarrollo con Ethereal, mostrar la URL de preview
     if (env.esDevelopment && info) {
       try {
-        const previewUrl = require("nodemailer").getTestMessageUrl(info);
+        const previewUrl = require('nodemailer').getTestMessageUrl(info);
         if (previewUrl) {
           console.log(`📧 [EMAIL] Preview: ${previewUrl}`);
         }
@@ -97,7 +97,7 @@ export async function enviarEmailVerificacion(
 
   return enviarEmail({
     para: email,
-    asunto: "Verificá tu email para completar tu registro",
+    asunto: 'Verificá tu email para completar tu registro',
     html,
   });
 }
@@ -155,7 +155,7 @@ export async function enviarEmailResetPassword(
 
   return enviarEmail({
     para: email,
-    asunto: "Restablecer tu contraseña",
+    asunto: 'Restablecer tu contraseña',
     html,
   });
 }
