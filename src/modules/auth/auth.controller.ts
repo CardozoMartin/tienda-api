@@ -2,7 +2,6 @@
 // Responsabilidad: recibir el request, llamar al service, y enviar la respuesta.
 // No contiene lógica de negocio, solo orquestación HTTP.
 import { NextFunction, Request, Response } from 'express';
-import { env } from '../../config/env';
 import { ErrorApi, RequestAutenticado } from '../../types';
 import {
   generarHtmlVerificacionError,
@@ -58,26 +57,22 @@ export class AuthController {
   };
 
   //verifica el email del usuario usando el token de verificación, y devuelve una página HTML con el resultado
-  verificarEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  verificarEmail = async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
       const { token } = req.params as { token: string };
       await this.service.verificarEmail(token);
 
       // Devuelve HTML lindo con redirección al login
-      const urlLogin = `${env.FRONTEND_URL}/login`;
-
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.send(generarHtmlVerificacionExitosa(urlLogin));
+      res.send(generarHtmlVerificacionExitosa());
     } catch (error) {
       // Si hay error, devuelve HTML de error
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
-      const urlLogin = `${env.FRONTEND_URL}/login`;
-
       const mensaje =
-        error instanceof ErrorApi ? error.mensaje : 'Ocurrió un error al verificar tu email';
+        error instanceof ErrorApi ? error.message : 'Ocurrió un error al verificar tu email';
 
-      res.status(400).send(generarHtmlVerificacionError(mensaje, urlLogin));
+      res.status(400).send(generarHtmlVerificacionError(mensaje));
     }
   };
 

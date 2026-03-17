@@ -159,9 +159,7 @@ export function esEnteroPositivo(valor: unknown): valor is number {
  * Genera HTML de éxito de verificación de email con redirección.
  * Redirige al usuario al frontend después de 3 segundos.
  */
-export function generarHtmlVerificacionExitosa(
-  urlRedirecccion: string = 'http://localhost:3000/login'
-): string {
+export function generarHtmlVerificacionExitosa(): string {
   return htmlExitoVerificacion;
 }
 
@@ -169,8 +167,7 @@ export function generarHtmlVerificacionExitosa(
  * Genera HTML de error en la verificación de email.
  */
 export function generarHtmlVerificacionError(
-  mensaje: string = 'El token no es válido o ha expirado',
-  urlRedirecccion: string = 'http://localhost:3000/login'
+  mensaje: string = 'El token no es válido o ha expirado'
 ): string {
   return `
     <!DOCTYPE html>
@@ -274,7 +271,7 @@ export function generarHtmlVerificacionError(
         </div>
         <h1>Error en Verificación</h1>
         <p class="message">${mensaje}</p>
-        <a href="${urlRedirecccion}" class="button">Volver al login</a>
+        <a href="/" class="button">Volver al login</a>
       </div>
     </body>
     </html>
