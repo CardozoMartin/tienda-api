@@ -1,7 +1,7 @@
 // Repository de autenticación.
 // Responsabilidad única: operaciones de DB relacionadas con auth.
 // No contiene lógica de negocio, solo acceso a datos.
-import { prisma } from "../../config/prisma";
+import { prisma } from '../../config/prisma';
 
 // Definimos el tipo Usuario localmente para no depender del cliente generado.
 // Cuando Prisma genera el cliente, este tipo coincide exactamente.
@@ -72,6 +72,7 @@ export class AuthRepository {
       where: { id: usuarioId },
       data: {
         emailVerificado: true,
+        activo: true,
         tokenVerificacion: null,
         tokenVencVerificacion: null,
       },
@@ -90,11 +91,7 @@ export class AuthRepository {
   /**
    * Guarda un token de reset de contraseña con su fecha de vencimiento.
    */
-  async guardarTokenReset(
-    usuarioId: number,
-    token: string,
-    vencimiento: Date
-  ): Promise<void> {
+  async guardarTokenReset(usuarioId: number, token: string, vencimiento: Date): Promise<void> {
     await prisma.usuario.update({
       where: { id: usuarioId },
       data: {
@@ -116,10 +113,7 @@ export class AuthRepository {
   /**
    * Actualiza la contraseña y limpia el token de reset.
    */
-  async actualizarPassword(
-    usuarioId: number,
-    nuevoHash: string
-  ): Promise<void> {
+  async actualizarPassword(usuarioId: number, nuevoHash: string): Promise<void> {
     await prisma.usuario.update({
       where: { id: usuarioId },
       data: {
