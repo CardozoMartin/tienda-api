@@ -39,6 +39,7 @@ export const RegistrarseSchema = z.object({
     .max(30)
     .trim()
     .optional(),
+  activo: z.boolean().optional()
 });
 
 export type RegistrarseDto = z.infer<typeof RegistrarseSchema>;

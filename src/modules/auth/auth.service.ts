@@ -46,10 +46,7 @@ export class AuthService {
     this.repository = new AuthRepository();
   }
 
-  /**
-   * Registra un nuevo usuario en el sistema.
-   * Hashea la contraseña y genera un token de verificación de email.
-   */
+  //servicio para registrar un usuario nuevo, con validación de email único, hashing de contraseña y envío de email de verificación
   async registrarse(datos: RegistrarseDto): Promise<{ mensaje: string }> {
     // Verificamos que el email no esté ya registrado
     const usuarioExistente = await this.repository.buscarPorEmail(datos.email);
@@ -74,6 +71,7 @@ export class AuthService {
       telefono: datos.telefono,
       tokenVerificacion,
       tokenVencVerificacion,
+      
     });
 
     // Enviamos el email de verificación
@@ -89,9 +87,7 @@ export class AuthService {
     };
   }
 
-  /**
-   * Autentica un usuario y retorna los tokens de acceso y refresco.
-   */
+  //servicio para iniciar sesión, con validación de email y contraseña, generación de tokens JWT y verificación de cuenta activa
   async login(datos: LoginDto): Promise<TokensAutenticacion> {
     // Buscamos el usuario - usamos mensaje genérico para no revelar si el email existe
     const usuario = await this.repository.buscarPorEmail(datos.email);

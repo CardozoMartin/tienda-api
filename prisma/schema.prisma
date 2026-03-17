@@ -64,7 +64,7 @@ model Usuario {
   tokenVencVerificacion DateTime?
   tokenResetPass        String?  @db.VarChar(100)
   tokenVencReset        DateTime?
-  activo                Boolean  @default(true)
+  activo                Boolean  @default(false)
   creadoEn              DateTime @default(now())
   actualizadoEn         DateTime @updatedAt
 
