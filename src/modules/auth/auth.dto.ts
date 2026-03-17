@@ -1,11 +1,6 @@
-// Schemas de validación y DTOs para el módulo de autenticación.
-// Zod valida los datos de entrada y genera los tipos TypeScript automáticamente.
 import { z } from "zod";
 
-// ─────────────────────────────────────────────
 // REGISTRO
-// ─────────────────────────────────────────────
-
 export const RegistrarseSchema = z.object({
   nombre: z
     .string({ required_error: "El nombre es requerido" })
@@ -22,7 +17,7 @@ export const RegistrarseSchema = z.object({
   email: z
     .string({ required_error: "El email es requerido" })
     .email("El email no tiene un formato válido")
-    .toLowerCase() // Normalizamos a minúsculas para evitar duplicados
+    .toLowerCase()
     .trim(),
 
   password: z
@@ -44,10 +39,8 @@ export const RegistrarseSchema = z.object({
 
 export type RegistrarseDto = z.infer<typeof RegistrarseSchema>;
 
-// ─────────────────────────────────────────────
-// LOGIN
-// ─────────────────────────────────────────────
 
+// LOGIN
 export const LoginSchema = z.object({
   email: z
     .string({ required_error: "El email es requerido" })
@@ -62,10 +55,8 @@ export const LoginSchema = z.object({
 
 export type LoginDto = z.infer<typeof LoginSchema>;
 
-// ─────────────────────────────────────────────
-// REFRESH TOKEN
-// ─────────────────────────────────────────────
 
+// REFRESH TOKEN
 export const RefreshTokenSchema = z.object({
   refreshToken: z
     .string({ required_error: "El refresh token es requerido" })
@@ -74,10 +65,8 @@ export const RefreshTokenSchema = z.object({
 
 export type RefreshTokenDto = z.infer<typeof RefreshTokenSchema>;
 
-// ─────────────────────────────────────────────
-// CAMBIAR CONTRASEÑA
-// ─────────────────────────────────────────────
 
+// CAMBIAR CONTRASEÑA
 export const CambiarPasswordSchema = z
   .object({
     passwordActual: z.string().min(1, "La contraseña actual es requerida"),
@@ -97,20 +86,16 @@ export const CambiarPasswordSchema = z
 
 export type CambiarPasswordDto = z.infer<typeof CambiarPasswordSchema>;
 
-// ─────────────────────────────────────────────
-// SOLICITAR RESET DE CONTRASEÑA
-// ─────────────────────────────────────────────
 
+// SOLICITAR RESET DE CONTRASEÑA
 export const SolicitarResetSchema = z.object({
   email: z.string().email("Email inválido").toLowerCase().trim(),
 });
 
 export type SolicitarResetDto = z.infer<typeof SolicitarResetSchema>;
 
-// ─────────────────────────────────────────────
-// CONFIRMAR RESET DE CONTRASEÑA
-// ─────────────────────────────────────────────
 
+// CONFIRMAR RESET DE CONTRASEÑA
 export const ConfirmarResetSchema = z
   .object({
     token: z.string().min(1, "El token es requerido"),

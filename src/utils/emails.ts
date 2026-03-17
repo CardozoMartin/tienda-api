@@ -114,7 +114,7 @@ export async function enviarEmailResetPassword(
   nombre: string,
   tokenReset: string
 ): Promise<boolean> {
-  const urlReset = `${env.API_PREFIX}/auth/confirmar-reset/${tokenReset}`;
+  const urlReset = `${env.FRONTEND_URL}/change-password?token=${tokenReset}`;
 
   const html = `
     <html dir="ltr">

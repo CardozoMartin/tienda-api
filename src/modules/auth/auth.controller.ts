@@ -26,10 +26,7 @@ export class AuthController {
     this.service = new AuthService();
   }
 
-  /**
-   * POST /auth/registro
-   * Registra un nuevo usuario en el sistema.
-   */
+  //registro de usuario, con validación de email único, hashing de contraseña y envío de email de verificación
   registrarse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const resultado = await this.service.registrarse(req.body as RegistrarseDto);
@@ -39,10 +36,7 @@ export class AuthController {
     }
   };
 
-  /**
-   * POST /auth/login
-   * Autentica al usuario y retorna los tokens.
-   */
+  //login de usuario, devuelve access token y refresh token
   login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const resultado = await this.service.login(req.body as LoginDto);
@@ -52,10 +46,7 @@ export class AuthController {
     }
   };
 
-  /**
-   * POST /auth/refresh
-   * Genera un nuevo access token usando el refresh token.
-   */
+  //renueva el access token usando el refresh token
   refrescarToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { refreshToken } = req.body as RefreshTokenDto;
@@ -66,11 +57,7 @@ export class AuthController {
     }
   };
 
-  /**
-   * GET /auth/verificar-email/:token
-   * Verifica el email del usuario usando el token recibido por correo.
-   * Devuelve una página HTML linda con redirección.
-   */
+  //verifica el email del usuario usando el token de verificación, y devuelve una página HTML con el resultado
   verificarEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { token } = req.params as { token: string };
@@ -94,11 +81,7 @@ export class AuthController {
     }
   };
 
-  /**
-   * PUT /auth/cambiar-password
-   * Cambia la contraseña del usuario autenticado.
-   * Requiere autenticación.
-   */
+  // Cambia la contraseña del usuario autenticado.
   cambiarPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -112,10 +95,7 @@ export class AuthController {
     }
   };
 
-  /**
-   * POST /auth/solicitar-reset
-   * Inicia el proceso de reset de contraseña.
-   */
+  // Solicita el reset de contraseña, generando un token y enviándolo por email.
   solicitarReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const resultado = await this.service.solicitarResetPassword(req.body as SolicitarResetDto);
@@ -125,13 +105,13 @@ export class AuthController {
     }
   };
 
-  /**
-   * POST /auth/confirmar-reset
-   * Confirma el reset de contraseña con el token recibido por email.
-   */
+  // Confirma el reset de contraseña usando el token enviado por email, y actualiza la contraseña.
   confirmarReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const resultado = await this.service.confirmarResetPassword(req.body as ConfirmarResetDto);
+      const resultado = await this.service.confirmarResetPassword({
+        ...req.body,
+        token: req.params.token, // ← Agregar esto
+      } as ConfirmarResetDto);
       responderOk(res, resultado, resultado.mensaje);
     } catch (error) {
       next(error);
