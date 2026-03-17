@@ -40,7 +40,7 @@ export async function inicializarMailer() {
     );
   }
 }
-
+//
 /**
  * Prueba la conexión del mailer.
  * Útil para verificar que los credenciales SMTP sean correctos.
