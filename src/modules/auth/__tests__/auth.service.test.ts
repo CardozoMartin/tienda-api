@@ -1,6 +1,6 @@
 // IMPORTANTE: El jest-setup-mocks.js ya ha configurado global.PRISMA_MOCK
 // Aquí simplemente usamos ese mock global que está disponible
-
+import jwt from 'jsonwebtoken';
 // Mock de emails para no enviar emails reales en tests
 jest.mock('../../../utils/emails', () => ({
   enviarEmailVerificacion: jest.fn().mockResolvedValue(undefined),
@@ -22,17 +22,17 @@ describe('AuthService', () => {
     // Esto es más confiable que mockClear() + mockResolvedValue() porque:
     // 1. jest.clearAllMocks() borra COMPLETAMENTE los mocks (historial + configuración)
     // 2. Luego reconfigurados explícitamente para cada test
-    
+
     // Limpiar historial y configuración de TODOS los mocks
     jest.clearAllMocks();
-    
+
     // Re-configura los mocks a su estado inicial (sin resolver nada específico)
     // Cada test individual configurará lo que necesite
     prismaMock.usuario.findUnique.mockResolvedValue(null);
     prismaMock.usuario.findFirst.mockResolvedValue(null);
     prismaMock.usuario.create.mockResolvedValue({} as any);
     prismaMock.usuario.update.mockResolvedValue({} as any);
-    
+
     // EXPLICACIÓN: Creamos una nueva instancia del servicio para cada test
     // Esto asegura que no hay estado compartido entre tests
     service = new AuthService();
@@ -45,8 +45,8 @@ describe('AuthService', () => {
       // EXPLICACIÓN: Este test simula el registro de un usuario NUEVO
       // Paso 1: Configuramos el mock para que findUnique retorne NULL
       // Esto significa "este email no existe en la base de datos todavía"
-      prismaMock.usuario.findUnique.mockResolvedValue(null); 
-      
+      prismaMock.usuario.findUnique.mockResolvedValue(null);
+
       // Paso 2: Configuramos el mock para que create retorne un usuario creado
       // Cuando el servicio cree un usuario, queremos simular que la BD retorna el usuario creado
       prismaMock.usuario.create.mockResolvedValue({
@@ -168,7 +168,7 @@ describe('AuthService', () => {
       // EXPLICACIÓN: Este test valida que un usuario NO puede loguearse si su cuenta está desactivada
       // Paso 1: Creamos un hash bcrypt válido de la contraseña
       const passwordHash = await bcrypt.hash('Password1', 12);
-      
+
       // Paso 2: Configuramos el mock para simular un usuario en la BD
       // IMPORTANTE: activo: false significa que la cuenta está DESACTIVADA
       prismaMock.usuario.findUnique.mockResolvedValue({
@@ -199,7 +199,7 @@ describe('AuthService', () => {
         tokenResetPass: 'token-valido', // Token que se valida en la BD
         tokenVencReset: new Date(Date.now() + 60 * 60 * 1000), // Token expira en 1 hora (futuro = válido)
       } as any);
-      
+
       // Paso 2: Configuramos el mock de update para simular la actualización de la contraseña
       prismaMock.usuario.update.mockResolvedValue({} as any);
 
@@ -252,6 +252,173 @@ describe('AuthService', () => {
           confirmarPassword: 'NuevoPass1',
         })
       ).rejects.toThrow('El token de reset ha expirado. Solicitá uno nuevo.');
+    });
+  });
+
+  // ─── SOLICITAR RESET PASSWORD ─────────────────────────────
+
+  describe('solicitarResetPassword', () => {
+    it('debe retornar mensaje genérico si el email no existe', async () => {
+      prismaMock.usuario.findUnique.mockResolvedValue(null);
+
+      const resultado = await service.solicitarResetPassword({ email: 'noexiste@test.com' });
+
+      expect(resultado.mensaje).toContain('Si existe una cuenta');
+      expect(prismaMock.usuario.update).not.toHaveBeenCalled();
+    });
+
+    it('debe retornar mensaje genérico si la cuenta está inactiva', async () => {
+      prismaMock.usuario.findUnique.mockResolvedValue({ id: 1, activo: false } as any);
+
+      const resultado = await service.solicitarResetPassword({ email: 'juan@test.com' });
+
+      expect(resultado.mensaje).toContain('Si existe una cuenta');
+      expect(prismaMock.usuario.update).not.toHaveBeenCalled();
+    });
+
+    it('debe guardar token y enviar email si el usuario existe y está activo', async () => {
+      prismaMock.usuario.findUnique.mockResolvedValue({
+        id: 1,
+        nombre: 'Juan',
+        email: 'juan@test.com',
+        activo: true,
+      } as any);
+      prismaMock.usuario.update.mockResolvedValue({} as any);
+
+      const resultado = await service.solicitarResetPassword({ email: 'juan@test.com' });
+
+      expect(resultado.mensaje).toContain('Si existe una cuenta');
+      expect(prismaMock.usuario.update).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ─── VERIFICAR EMAIL ──────────────────────────────────────
+
+  describe('verificarEmail', () => {
+    it('debe verificar el email con token válido', async () => {
+      prismaMock.usuario.findFirst.mockResolvedValue({
+        id: 1,
+        emailVerificado: false,
+        tokenVerificacion: 'token-valido',
+        tokenVencVerificacion: new Date(Date.now() + 60 * 60 * 1000),
+      } as any);
+      prismaMock.usuario.update.mockResolvedValue({} as any);
+
+      const resultado = await service.verificarEmail('token-valido');
+
+      expect(resultado.mensaje).toBe('Email verificado exitosamente');
+      expect(prismaMock.usuario.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('debe lanzar error si el token no existe', async () => {
+      prismaMock.usuario.findFirst.mockResolvedValue(null);
+
+      await expect(service.verificarEmail('token-falso')).rejects.toThrow(
+        'Token de verificación inválido'
+      );
+    });
+
+    it('debe lanzar error si el token expiró', async () => {
+      prismaMock.usuario.findFirst.mockResolvedValue({
+        id: 1,
+        tokenVerificacion: 'token-expirado',
+        tokenVencVerificacion: new Date(Date.now() - 1000),
+      } as any);
+
+      await expect(service.verificarEmail('token-expirado')).rejects.toThrow(
+        'El token de verificación ha expirado'
+      );
+    });
+  });
+
+  // ─── CAMBIAR PASSWORD ─────────────────────────────────────
+
+  describe('cambiarPassword', () => {
+    it('debe cambiar la contraseña correctamente', async () => {
+      const passwordHash = await bcrypt.hash('Password1', 12);
+      prismaMock.usuario.findUnique.mockResolvedValue({ id: 1, passwordHash } as any);
+      prismaMock.usuario.update.mockResolvedValue({} as any);
+
+      const resultado = await service.cambiarPassword(1, {
+        passwordActual: 'Password1',
+        passwordNueva: 'NuevoPass1',
+        confirmarPassword: 'NuevoPass1',
+      });
+
+      expect(resultado.mensaje).toBe('Contraseña actualizada exitosamente');
+      expect(prismaMock.usuario.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('debe lanzar error si la contraseña actual es incorrecta', async () => {
+      const passwordHash = await bcrypt.hash('Password1', 12);
+      prismaMock.usuario.findUnique.mockResolvedValue({ id: 1, passwordHash } as any);
+
+      await expect(
+        service.cambiarPassword(1, {
+          passwordActual: 'WrongPass1',
+          passwordNueva: 'NuevoPass1',
+          confirmarPassword: 'NuevoPass1',
+        })
+      ).rejects.toThrow('La contraseña actual es incorrecta');
+    });
+
+    it('debe lanzar error si el usuario no existe', async () => {
+      prismaMock.usuario.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.cambiarPassword(999, {
+          passwordActual: 'Password1',
+          passwordNueva: 'NuevoPass1',
+          confirmarPassword: 'NuevoPass1',
+        })
+      ).rejects.toThrow('Usuario no encontrado');
+    });
+  });
+
+  // ─── REFRESCAR TOKEN ──────────────────────────────────────
+
+  describe('refrescarToken', () => {
+    it('debe retornar nuevo accessToken con refresh token válido', async () => {
+      // Generamos un refresh token real para el test
+      const refreshToken = jwt.sign(
+        { sub: 1, email: 'juan@test.com', rol: 'CLIENT' },
+        process.env.JWT_REFRESH_SECRET || 'test-refresh-secret',
+        { expiresIn: '7d' }
+      );
+
+      prismaMock.usuario.findUnique.mockResolvedValue({
+        id: 1,
+        email: 'juan@test.com',
+        rol: 'CLIENT',
+        activo: true,
+      } as any);
+
+      const resultado = await service.refrescarToken(refreshToken);
+
+      expect(resultado.accessToken).toBeDefined();
+    });
+
+    it('debe lanzar error con refresh token inválido', async () => {
+      await expect(service.refrescarToken('token-basura')).rejects.toThrow(
+        'Refresh token inválido o expirado'
+      );
+    });
+
+    it('debe lanzar error si el usuario está inactivo', async () => {
+      const refreshToken = jwt.sign(
+        { sub: 1, email: 'juan@test.com', rol: 'CLIENT' },
+        process.env.JWT_REFRESH_SECRET || 'test-refresh-secret',
+        { expiresIn: '7d' }
+      );
+
+      prismaMock.usuario.findUnique.mockResolvedValue({
+        id: 1,
+        activo: false,
+      } as any);
+
+      await expect(service.refrescarToken(refreshToken)).rejects.toThrow(
+        'Usuario no encontrado o inactivo'
+      );
     });
   });
 });
