@@ -60,18 +60,15 @@ export interface ResultadoPaginado<T> {
 // Clase personalizada para errores con código HTTP
 // ─────────────────────────────────────────────
 
+// types/index.ts
 export class ErrorApi extends Error {
-  public readonly codigoHttp: number;
-  public readonly errores?: string[];
-
-  constructor(mensaje: string, codigoHttp: number = 500, errores?: string[]) {
-    super(mensaje);
-    this.name = "ErrorApi";
-    this.codigoHttp = codigoHttp;
-    this.errores = errores;
-
-    // Necesario para que instanceof funcione correctamente con clases que extienden Error
-    Object.setPrototypeOf(this, new.target.prototype);
+  constructor(
+    message: string,
+    public codigoHttp: number = 500,
+    public errores?: string[]  
+  ) {
+    super(message);
+    this.name = 'ErrorApi';
   }
 }
 

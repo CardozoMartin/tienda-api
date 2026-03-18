@@ -1,6 +1,3 @@
-// Controller de autenticación.
-// Responsabilidad: recibir el request, llamar al service, y enviar la respuesta.
-// No contiene lógica de negocio, solo orquestación HTTP.
 import { NextFunction, Request, Response } from 'express';
 import { ErrorApi, RequestAutenticado } from '../../types';
 import {
@@ -17,6 +14,7 @@ import {
   SolicitarResetDto,
 } from './auth.dto';
 import { AuthService } from './auth.service';
+
 
 export class AuthController {
   private service: AuthService;
