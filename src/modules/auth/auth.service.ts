@@ -4,6 +4,7 @@
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
+import { RolUsuario } from '@prisma/client';
 import { env } from '../../config/env';
 import { ErrorApi, JwtPayload } from '../../types';
 import { AuthRepository } from './auth.repository';
@@ -33,7 +34,7 @@ export interface TokensAutenticacion {
     nombre: string;
     apellido: string;
     email: string;
-    rol: string;
+    rol: RolUsuario;
     avatarUrl: string | null;
     emailVerificado: boolean;
   };
@@ -69,6 +70,7 @@ export class AuthService {
       telefono: datos.telefono,
       tokenVerificacion,
       tokenVencVerificacion,
+      rol: datos.rol ?? RolUsuario.CLIENT,
     });
 
     // Enviamos el email de verificación
@@ -229,7 +231,7 @@ export class AuthService {
   private generarTokens(
     usuarioId: number,
     email: string,
-    rol: string
+    rol: RolUsuario
   ): { accessToken: string; refreshToken: string } {
     const payload = { sub: usuarioId, email, rol };
 
