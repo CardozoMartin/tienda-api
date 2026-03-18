@@ -53,6 +53,9 @@ export const env = {
   SMTP_PASS: opcional("SMTP_PASS", ""),
   MAIL_FROM: opcional("MAIL_FROM", "noreply@tienda.local"),
 
+  // Frontend URL para redirecciones
+  FRONTEND_URL: opcional("FRONTEND_URL", "http://localhost:5173"),
+
   // Helpers de entorno
   esDevelopment: opcional("NODE_ENV", "development") === "development",
   esProduccion: opcional("NODE_ENV", "development") === "production",

@@ -116,7 +116,7 @@ class ResenasRepository {
         ? parseFloat(resultado._avg.calificacion.toFixed(1))
         : 0,
       total: resultado._count.calificacion,
-      distribucion: distribucion.map((d) => ({
+      distribucion: distribucion.map((d: any) => ({
         calificacion: d.calificacion,
         cantidad: d._count.calificacion,
       })),
@@ -225,7 +225,7 @@ class ResenasRepository {
         ? parseFloat(resultado._avg.calificacion.toFixed(1))
         : 0,
       total: resultado._count.calificacion,
-      distribucion: distribucion.map((d) => ({
+      distribucion: distribucion.map((d: any) => ({
         calificacion: d.calificacion,
         cantidad: d._count.calificacion,
       })),

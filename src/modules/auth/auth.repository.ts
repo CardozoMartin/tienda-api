@@ -1,7 +1,7 @@
 // Repository de autenticación.
 // Responsabilidad única: operaciones de DB relacionadas con auth.
 // No contiene lógica de negocio, solo acceso a datos.
-import { prisma } from "../../config/prisma";
+import { prisma } from '../../config/prisma';
 
 // Definimos el tipo Usuario localmente para no depender del cliente generado.
 // Cuando Prisma genera el cliente, este tipo coincide exactamente.
@@ -25,30 +25,21 @@ interface UsuarioModel {
 }
 
 export class AuthRepository {
-  /**
-   * Busca un usuario por email.
-   * Incluye el passwordHash para validación, a diferencia de otras queries
-   * que lo omiten por seguridad.
-   */
+  // Busca un usuario por su email.
   async buscarPorEmail(email: string): Promise<UsuarioModel | null> {
     return prisma.usuario.findUnique({
       where: { email },
     });
   }
 
-  /**
-   * Busca un usuario por su ID.
-   */
+  // Busca un usuario por su ID.
   async buscarPorId(id: number): Promise<UsuarioModel | null> {
     return prisma.usuario.findUnique({
       where: { id },
     });
   }
 
-  /**
-   * Crea un nuevo usuario.
-   * El passwordHash ya viene hasheado desde el service.
-   */
+  // Crea un nuevo usuario con los datos proporcionados.
   async crear(datos: {
     nombre: string;
     apellido: string;
@@ -63,38 +54,28 @@ export class AuthRepository {
     });
   }
 
-  /**
-   * Verifica el email del usuario usando el token de verificación.
-   * Limpia el token después de verificar.
-   */
+ // Verifica el email de un usuario, activando su cuenta y limpiando los tokens de verificación.
   async verificarEmail(usuarioId: number): Promise<UsuarioModel> {
     return prisma.usuario.update({
       where: { id: usuarioId },
       data: {
         emailVerificado: true,
+        activo: true,
         tokenVerificacion: null,
         tokenVencVerificacion: null,
       },
     });
   }
 
-  /**
-   * Busca un usuario por su token de verificación de email.
-   */
+  // Busca un usuario por su token de verificación de email.
   async buscarPorTokenVerificacion(token: string): Promise<UsuarioModel | null> {
     return prisma.usuario.findFirst({
       where: { tokenVerificacion: token },
     });
   }
 
-  /**
-   * Guarda un token de reset de contraseña con su fecha de vencimiento.
-   */
-  async guardarTokenReset(
-    usuarioId: number,
-    token: string,
-    vencimiento: Date
-  ): Promise<void> {
+  // Guarda un token de reset de contraseña para un usuario, con su fecha de vencimiento.
+  async guardarTokenReset(usuarioId: number, token: string, vencimiento: Date): Promise<void> {
     await prisma.usuario.update({
       where: { id: usuarioId },
       data: {
@@ -104,22 +85,15 @@ export class AuthRepository {
     });
   }
 
-  /**
-   * Busca un usuario por su token de reset de contraseña.
-   */
+  // Busca un usuario por su token de reset de contraseña.
   async buscarPorTokenReset(token: string): Promise<UsuarioModel | null> {
     return prisma.usuario.findFirst({
       where: { tokenResetPass: token },
     });
   }
 
-  /**
-   * Actualiza la contraseña y limpia el token de reset.
-   */
-  async actualizarPassword(
-    usuarioId: number,
-    nuevoHash: string
-  ): Promise<void> {
+  // Actualiza la contraseña de un usuario, limpiando los tokens de reset.
+  async actualizarPassword(usuarioId: number, nuevoHash: string): Promise<void> {
     await prisma.usuario.update({
       where: { id: usuarioId },
       data: {

@@ -87,7 +87,9 @@ export class TiendasRepository {
     provincia?: string;
     ciudad?: string;
   }): Promise<unknown> {
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
+      // EXPLICACIÓN: tx es un cliente de Prisma transaccional
+      // El tipo 'any' se usa porque Prisma no exporta un tipo específico para tx
       // Creamos la tienda
       const tienda = await tx.tienda.create({ data: datos });
 
