@@ -1,16 +1,14 @@
-// Utilidades compartidas por toda la aplicación.
 import { Response } from 'express';
 import slugify from 'slugify';
 import { ParametrosPaginacion, RespuestaApi, ResultadoPaginado } from '../types';
 import { htmlExitoVerificacion } from './html';
 
-// ─────────────────────────────────────────────
-// RESPUESTAS HTTP ESTANDARIZADAS
-// ─────────────────────────────────────────────
 
-/**
- * Envía una respuesta exitosa con formato estándar.
- */
+// Utilidades compartidas por toda la aplicación.
+// RESPUESTAS HTTP ESTANDARIZADAS
+
+
+// Envía una respuesta de éxito con formato estándar.
 export function responderOk<T>(
   res: Response,
   datos: T,
@@ -25,9 +23,7 @@ export function responderOk<T>(
   res.status(codigoHttp).json(respuesta);
 }
 
-/**
- * Envía una respuesta de error con formato estándar.
- */
+// Envía una respuesta de error con formato estándar.
 export function responderError(
   res: Response,
   mensaje: string,
@@ -42,9 +38,7 @@ export function responderError(
   res.status(codigoHttp).json(respuesta);
 }
 
-/**
- * Envía una respuesta paginada con metadatos de paginación.
- */
+// Responde con un resultado paginado, incluyendo metadatos de paginación.
 export function responderPaginado<T>(
   res: Response,
   resultado: ResultadoPaginado<T>,
@@ -63,17 +57,13 @@ export function responderPaginado<T>(
   });
 }
 
-// ─────────────────────────────────────────────
-// PAGINACIÓN
-// ─────────────────────────────────────────────
 
-/**
- * Extrae y normaliza parámetros de paginación de la query string.
- * Aplica límites para evitar consultas excesivamente grandes.
- */
+// PAGINACIÓN
+
+
+// Extrae los parámetros de paginación de la query string, con valores por defecto y validación básica.
 export function extraerPaginacion(query: Record<string, unknown>): ParametrosPaginacion {
   const pagina = Math.max(1, parseInt(String(query['pagina'] ?? '1'), 10) || 1);
-  // Límite máximo de 100 registros por página para evitar sobrecarga
   const limite = Math.min(100, Math.max(1, parseInt(String(query['limite'] ?? '20'), 10) || 20));
   const orden = typeof query['orden'] === 'string' ? query['orden'] : 'creadoEn';
   const direccion = query['direccion'] === 'asc' ? 'asc' : 'desc';
@@ -81,16 +71,12 @@ export function extraerPaginacion(query: Record<string, unknown>): ParametrosPag
   return { pagina, limite, orden, direccion };
 }
 
-/**
- * Calcula el offset de Prisma a partir de los parámetros de paginación.
- */
+// Calcula el número de registros a saltar para la paginación (skip).
 export function calcularSkip(pagina: number, limite: number): number {
   return (pagina - 1) * limite;
 }
 
-/**
- * Construye el objeto ResultadoPaginado a partir de datos y conteo total.
- */
+// Construye un resultado paginado a partir de los datos, total y parámetros de paginación.
 export function construirPaginacion<T>(
   datos: T[],
   total: number,
@@ -106,66 +92,50 @@ export function construirPaginacion<T>(
   };
 }
 
-// ─────────────────────────────────────────────
-// SLUGS
-// ─────────────────────────────────────────────
 
-/**
- * Genera un slug URL-friendly a partir de un texto.
- * Ejemplo: "Mi Tienda de Ropa" → "mi-tienda-de-ropa"
- */
+// SLUGS
+
+
+// Genera un slug a partir de un texto, usando la librería slugify.
 export function generarSlug(texto: string): string {
   return slugify(texto, {
     lower: true,
-    strict: true, // Elimina caracteres especiales
-    locale: 'es', // Maneja caracteres españoles como ñ, á, etc.
+    strict: true, 
+    locale: 'es', 
     trim: true,
   });
 }
 
-/**
- * Genera un slug único agregando un sufijo numérico aleatorio.
- * Se usa cuando el slug base ya existe en la DB.
- */
+/// Genera un slug único agregando un sufijo aleatorio de 4 dígitos.
 export function generarSlugUnico(texto: string): string {
   const base = generarSlug(texto);
   const sufijo = Math.floor(Math.random() * 9000) + 1000; // 4 dígitos
   return `${base}-${sufijo}`;
 }
 
-// ─────────────────────────────────────────────
-// VALIDACIONES
-// ─────────────────────────────────────────────
 
-/**
- * Verifica si una cadena es un color hexadecimal válido (#RRGGBB).
- */
+// VALIDACIONES
+
+
+/// Verifica si un string es un color hexadecimal válido (ejemplo: #A1B2C3).
 export function esColorHexValido(color: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(color);
 }
 
-/**
- * Verifica si un número es un entero positivo.
- */
+// Verifica si un valor es un entero positivo (ejemplo: 1, 2, 3, etc.).
 export function esEnteroPositivo(valor: unknown): valor is number {
   return typeof valor === 'number' && Number.isInteger(valor) && valor > 0;
 }
 
-// ─────────────────────────────────────────────
-// HTML RESPONSES
-// ─────────────────────────────────────────────
 
-/**
- * Genera HTML de éxito de verificación de email con redirección.
- * Redirige al usuario al frontend después de 3 segundos.
- */
+// HTML RESPONSES
+
+// Genera HTML de éxito en la verificación de email.
 export function generarHtmlVerificacionExitosa(): string {
   return htmlExitoVerificacion;
 }
 
-/**
- * Genera HTML de error en la verificación de email.
- */
+// Genera HTML de error en la verificación de email, con un mensaje personalizado.
 export function generarHtmlVerificacionError(
   mensaje: string = 'El token no es válido o ha expirado'
 ): string {
