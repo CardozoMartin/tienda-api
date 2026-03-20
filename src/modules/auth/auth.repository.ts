@@ -1,6 +1,7 @@
 // Repository de autenticación.
 // Responsabilidad única: operaciones de DB relacionadas con auth.
 // No contiene lógica de negocio, solo acceso a datos.
+import { RolUsuario } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 
 // Definimos el tipo Usuario localmente para no depender del cliente generado.
@@ -11,7 +12,7 @@ interface UsuarioModel {
   apellido: string;
   email: string;
   passwordHash: string;
-  rol: string;
+  rol: RolUsuario;
   telefono: string | null;
   avatarUrl: string | null;
   emailVerificado: boolean;
@@ -45,6 +46,7 @@ export class AuthRepository {
     apellido: string;
     email: string;
     passwordHash: string;
+    rol?: RolUsuario;
     telefono?: string;
     tokenVerificacion: string;
     tokenVencVerificacion: Date;

@@ -20,10 +20,7 @@ export class TiendasService {
     this.repository = new TiendasRepository();
   }
 
-  /**
-   * Crea una nueva tienda para el usuario autenticado.
-   * Genera el slug automáticamente a partir del nombre.
-   */
+  //Servicio para crear una tienda para un usuario autenticado, con validación de que no tenga ya una tienda, generación de slug único, y manejo de errores.
   async crear(usuarioId: number, datos: CrearTiendaDto) {
     // Verificamos que el usuario no tenga ya una tienda
     const tiendaExistente = await this.repository.buscarPorUsuarioId(usuarioId);

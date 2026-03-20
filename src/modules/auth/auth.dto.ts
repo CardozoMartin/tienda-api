@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RolUsuario } from "@prisma/client";
 
 // REGISTRO
 export const RegistrarseSchema = z.object({
@@ -34,6 +35,7 @@ export const RegistrarseSchema = z.object({
     .max(30)
     .trim()
     .optional(),
+  rol: z.enum([RolUsuario.CLIENT, RolUsuario.OWNER]).optional(),
   activo: z.boolean().optional()
 });
 

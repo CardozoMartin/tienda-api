@@ -20,10 +20,7 @@ export class TiendasController {
     this.service = new TiendasService();
   }
 
-  /**
-   * GET /tiendas
-   * Lista tiendas públicas con filtros y paginación.
-   */
+  //controlador para listar tiendas con filtros de búsqueda, paginación y ordenamiento
   listar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const filtros = req.query as unknown as FiltrosTiendasDto;
@@ -34,10 +31,7 @@ export class TiendasController {
     }
   };
 
-  /**
-   * GET /tiendas/:slug
-   * Vista pública de una tienda por su slug.
-   */
+  //controlador para obtener una tienda por su slug (URL amigable)
   obtenerPorSlug = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { slug } = req.params as { slug: string };
@@ -48,10 +42,7 @@ export class TiendasController {
     }
   };
 
-  /**
-   * GET /tiendas/mi-tienda
-   * Obtiene la tienda del usuario autenticado (panel owner).
-   */
+  //controlador para obtener la tienda del usuario autenticado
   obtenerMiTienda = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -62,10 +53,7 @@ export class TiendasController {
     }
   };
 
-  /**
-   * POST /tiendas
-   * Crea una nueva tienda para el usuario autenticado.
-   */
+//controlador para crear una tienda, solo para usuarios autenticados que no tengan tienda aún
   crear = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -76,10 +64,7 @@ export class TiendasController {
     }
   };
 
-  /**
-   * PUT /tiendas/mi-tienda
-   * Actualiza los datos de la tienda del usuario autenticado.
-   */
+  //controlador para actualizar la información de la tienda del usuario autenticado
   actualizar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -90,10 +75,7 @@ export class TiendasController {
     }
   };
 
-  /**
-   * PUT /tiendas/mi-tienda/tema
-   * Actualiza la apariencia visual de la tienda.
-   */
+ //controlador para actualizar el tema visual de la tienda del usuario autenticado
   actualizarTema = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
