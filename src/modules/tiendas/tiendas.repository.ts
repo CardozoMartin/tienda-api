@@ -1,8 +1,8 @@
 // Repository de tiendas.
 // Solo acceso a datos, sin lógica de negocio.
-import { prisma } from "../../config/prisma";
-import { calcularSkip } from "../../utils/helpers";
-import { FiltrosTiendasDto, ActualizarTemaDto } from "./tiendas.dto";
+import { prisma } from '../../config/prisma';
+import { calcularSkip } from '../../utils/helpers';
+import { ActualizarTemaDto, FiltrosTiendasDto } from './tiendas.dto';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type WhereInput = Record<string, any>;
@@ -21,7 +21,7 @@ export class TiendasRepository {
         temaConfig: true,
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
-        carrusel: { where: { activa: true }, orderBy: { orden: "asc" } },
+        carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
       },
     });
@@ -40,7 +40,7 @@ export class TiendasRepository {
         temaConfig: true,
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
-        carrusel: { where: { activa: true }, orderBy: { orden: "asc" } },
+        carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
       },
     });
@@ -119,7 +119,7 @@ export class TiendasRepository {
           temaConfig: true,
           metodosPago: { include: { metodoPago: true } },
           metodosEntrega: { include: { metodoEntrega: true } },
-          carrusel: { where: { activa: true }, orderBy: { orden: "asc" } },
+          carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
           _count: { select: { productos: true, resenas: true } },
         },
       });
@@ -129,10 +129,7 @@ export class TiendasRepository {
   /**
    * Actualiza los datos básicos de una tienda.
    */
-  async actualizar(
-    id: number,
-    datos: WhereInput
-  ): Promise<unknown> {
+  async actualizar(id: number, datos: WhereInput): Promise<unknown> {
     return prisma.tienda.update({
       where: { id },
       data: datos,
@@ -142,7 +139,7 @@ export class TiendasRepository {
         temaConfig: true,
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
-        carrusel: { where: { activa: true }, orderBy: { orden: "asc" } },
+        carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
       },
     });
@@ -191,7 +188,7 @@ export class TiendasRepository {
           temaConfig: true,
           metodosPago: { include: { metodoPago: true } },
           metodosEntrega: { include: { metodoEntrega: true } },
-          carrusel: { where: { activa: true }, orderBy: { orden: "asc" } },
+          carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
           _count: { select: { productos: true, resenas: true } },
         },
       }),
@@ -214,11 +211,7 @@ export class TiendasRepository {
 
   // ── Métodos de pago ──
 
-  async agregarMetodoPago(
-    tiendaId: number,
-    metodoPagoId: number,
-    detalle?: string
-  ) {
+  async agregarMetodoPago(tiendaId: number, metodoPagoId: number, detalle?: string) {
     return prisma.metodoPagoTienda.create({
       data: { tiendaId, metodoPagoId, detalle },
       include: { metodoPago: true },
