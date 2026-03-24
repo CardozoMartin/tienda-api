@@ -34,18 +34,18 @@ export function crearApp(): Application {
   );
 
   // Rate limiting: protege contra abuso y ataques de fuerza bruta
-  const limiter = rateLimit({
-    windowMs: env.RATE_LIMIT_WINDOW_MS,
-    max: env.RATE_LIMIT_MAX,
-    message: {
-      ok: false,
-      mensaje: "Demasiadas solicitudes. Por favor intentá más tarde.",
-    },
-    standardHeaders: true,   // Agrega headers RateLimit-* estándar
-    legacyHeaders: false,     // Desactiva X-RateLimit-* deprecated
-  });
+  // const limiter = rateLimit({
+  //   windowMs: env.RATE_LIMIT_WINDOW_MS,
+  //   max: env.RATE_LIMIT_MAX,
+  //   message: {
+  //     ok: false,
+  //     mensaje: "Demasiadas solicitudes. Por favor intentá más tarde.",
+  //   },
+  //   standardHeaders: true,   // Agrega headers RateLimit-* estándar
+  //   legacyHeaders: false,     // Desactiva X-RateLimit-* deprecated
+  // });
 
-  app.use(limiter);
+  // app.use(limiter);
 
   // ─────────────────────────────────────────────
   // PARSING Y LOGGING

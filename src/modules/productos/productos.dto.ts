@@ -54,8 +54,8 @@ const ProductoBaseSchema = z.object({
 
   categoriaId: z.coerce.number().int().positive().optional(),
 
-  disponible: z.coerce.boolean().default(true),
-  destacado: z.coerce.boolean().default(false),
+  disponible: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(true)),
+  destacado: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(false)),
 
   // Al usar FormData, tags puede venir como una sola string separada por comas or multiple fields.
   // Pero aquí el backend lo espera como array. Multer no lo parsea a array automáticamente si no se envía repetido.
