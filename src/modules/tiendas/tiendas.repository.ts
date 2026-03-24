@@ -209,7 +209,23 @@ export class TiendasRepository {
     });
   }
 
-  // ── Métodos de pago ──
+  // ── Catálogo de métodos (lectura) ──
+
+  async listarCatalogoMetodosPago() {
+    return prisma.metodoPago.findMany({
+      where: { activo: true },
+      orderBy: { orden: 'asc' },
+    });
+  }
+
+  async listarCatalogoMetodosEntrega() {
+    return prisma.metodoEntrega.findMany({
+      where: { activo: true },
+      orderBy: { orden: 'asc' },
+    });
+  }
+
+  // ── Métodos de pago (tienda) ──
 
   async agregarMetodoPago(tiendaId: number, metodoPagoId: number, detalle?: string) {
     return prisma.metodoPagoTienda.create({

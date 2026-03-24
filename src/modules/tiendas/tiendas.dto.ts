@@ -1,11 +1,11 @@
 // DTOs y schemas de validación para el módulo de tiendas.
-import { z } from "zod";
-import { NavbarStyle, HeroLayout, CardStyle, BorderRadius } from "@prisma/client";
+import { BorderRadius, CardStyle, HeroLayout, NavbarStyle } from '@prisma/client';
+import { z } from 'zod';
 
 // Validador de color hexadecimal (#RRGGBB)
 const colorHex = z
   .string()
-  .regex(/^#[0-9A-Fa-f]{6}$/, "El color debe ser un hexadecimal válido (#RRGGBB)")
+  .regex(/^#[0-9A-Fa-f]{6}$/, 'El color debe ser un hexadecimal válido (#RRGGBB)')
   .optional();
 
 // ─────────────────────────────────────────────
@@ -14,8 +14,8 @@ const colorHex = z
 
 export const CrearTiendaSchema = z.object({
   nombre: z
-    .string({ required_error: "El nombre de la tienda es requerido" })
-    .min(3, "El nombre debe tener al menos 3 caracteres")
+    .string({ required_error: 'El nombre de la tienda es requerido' })
+    .min(3, 'El nombre debe tener al menos 3 caracteres')
     .max(150)
     .trim(),
 
@@ -25,7 +25,7 @@ export const CrearTiendaSchema = z.object({
   whatsapp: z.string().max(30).trim().optional(),
   instagram: z.string().max(100).trim().optional(),
   facebook: z.string().max(100).trim().optional(),
-  sitioWeb: z.string().url("El sitio web debe ser una URL válida").optional(),
+  sitioWeb: z.string().url('El sitio web debe ser una URL válida').optional(),
   pais: z.string().max(80).trim().optional(),
   provincia: z.string().max(80).trim().optional(),
   ciudad: z.string().max(80).trim().optional(),
@@ -48,33 +48,23 @@ export type ActualizarTiendaDto = z.infer<typeof ActualizarTiendaSchema>;
 // TEMA / APARIENCIA
 // ─────────────────────────────────────────────
 
-const SeccionesVisiblesSchema = z.object({
-  navbar: z.boolean(),
-  hero: z.boolean(),
-  carrusel: z.boolean(),
-  galeria: z.boolean(),
-  productos: z.boolean(),
-  sobreNosotros: z.boolean(),
-  contacto: z.boolean(),
-  footer: z.boolean(),
-}).partial(); // Todos opcionales para poder actualizar solo algunos
+const SeccionesVisiblesSchema = z
+  .object({
+    navbar: z.boolean(),
+    hero: z.boolean(),
+    carrusel: z.boolean(),
+    galeria: z.boolean(),
+    productos: z.boolean(),
+    sobreNosotros: z.boolean(),
+    contacto: z.boolean(),
+    footer: z.boolean(),
+  })
+  .partial(); // Todos opcionales para poder actualizar solo algunos
 
 export const ActualizarTemaSchema = z.object({
-  colorPrimario: colorHex,
-  colorSecundario: colorHex,
   colorAcento: colorHex,
-  colorFondo: colorHex,
-  colorTexto: colorHex,
-  colorBoton: colorHex,
-  colorTextoBoton: colorHex,
-  colorNavbarBg: colorHex,
-  colorNavbarText: colorHex,
-  fuenteTitulo: z.string().max(150).optional(),
-  fuenteCuerpo: z.string().max(150).optional(),
+  modoOscuro: z.boolean().optional(),
   navbarStyle: z.nativeEnum(NavbarStyle).optional(),
-  heroLayout: z.nativeEnum(HeroLayout).optional(),
-  cardStyle: z.nativeEnum(CardStyle).optional(),
-  borderRadius: z.nativeEnum(BorderRadius).optional(),
   heroTitulo: z.string().max(200).optional(),
   heroSubtitulo: z.string().max(300).optional(),
   heroCtaTexto: z.string().max(100).optional(),
@@ -90,14 +80,14 @@ export type ActualizarTemaDto = z.infer<typeof ActualizarTemaSchema>;
 // ─────────────────────────────────────────────
 
 export const AgregarMetodoPagoSchema = z.object({
-  metodoPagoId: z.number().int().positive("El ID del método de pago es requerido"),
+  metodoPagoId: z.number().int().positive('El ID del método de pago es requerido'),
   detalle: z.string().max(255).trim().optional(),
 });
 
 export type AgregarMetodoPagoDto = z.infer<typeof AgregarMetodoPagoSchema>;
 
 export const AgregarMetodoEntregaSchema = z.object({
-  metodoEntregaId: z.number().int().positive("El ID del método de entrega es requerido"),
+  metodoEntregaId: z.number().int().positive('El ID del método de entrega es requerido'),
   zonaCobertura: z.string().max(255).trim().optional(),
   detalle: z.string().max(255).trim().optional(),
 });
@@ -109,11 +99,11 @@ export type AgregarMetodoEntregaDto = z.infer<typeof AgregarMetodoEntregaSchema>
 // ─────────────────────────────────────────────
 
 export const AgregarImagenCarruselSchema = z.object({
-  url: z.string().url("La URL de la imagen no es válida").max(500),
+  url: z.string().url('La URL de la imagen no es válida').max(500).optional(), // Optional si se suben archivos
   titulo: z.string().max(200).trim().optional(),
   subtitulo: z.string().max(300).trim().optional(),
-  linkUrl: z.string().url().max(500).optional(),
-  orden: z.number().int().min(0).default(0),
+  linkUrl: z.string().url().max(500).optional().or(z.literal('')), // Permite string vacío desde form-data
+  orden: z.coerce.number().int().min(0).default(0), // Convierte string "0" a número
 });
 
 export type AgregarImagenCarruselDto = z.infer<typeof AgregarImagenCarruselSchema>;
@@ -128,8 +118,8 @@ export const FiltrosTiendasSchema = z.object({
   busqueda: z.string().trim().optional(),
   ciudad: z.string().trim().optional(),
   provincia: z.string().trim().optional(),
-  orden: z.enum(["nombre", "vistas", "creadoEn"]).default("creadoEn"),
-  direccion: z.enum(["asc", "desc"]).default("desc"),
+  orden: z.enum(['nombre', 'vistas', 'creadoEn']).default('creadoEn'),
+  direccion: z.enum(['asc', 'desc']).default('desc'),
 });
 
 export type FiltrosTiendasDto = z.infer<typeof FiltrosTiendasSchema>;

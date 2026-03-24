@@ -56,6 +56,11 @@ export const env = {
   // Frontend URL para redirecciones
   FRONTEND_URL: opcional("FRONTEND_URL", "http://localhost:5173"),
 
+  // Cloudinary - para upload de imágenes
+  CLOUD_NAME: opcional("CLOUD_NAME", ""),
+  CLOUD_API_KEY: opcional("CLOUD_API_KEY", ""),
+  CLOUD_API_SECRET: opcional("CLOUD_API_SECRET", ""),
+
   // Helpers de entorno
   esDevelopment: opcional("NODE_ENV", "development") === "development",
   esProduccion: opcional("NODE_ENV", "development") === "production",

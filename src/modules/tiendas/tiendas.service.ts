@@ -12,6 +12,7 @@ import {
   AgregarImagenCarruselDto,
   FiltrosTiendasDto,
 } from "./tiendas.dto";
+import { uploadImageToCloudinary } from "@/utils/cloudinary";
 
 export class TiendasService {
   private repository: TiendasRepository;
@@ -128,7 +129,17 @@ export class TiendasService {
     return construirPaginacion(datos, total, filtros.pagina, filtros.limite);
   }
 
-  // ── Métodos de pago ──
+  // ── Catálogo de métodos ──
+
+  async listarMetodosPagoCatalogo() {
+    return this.repository.listarCatalogoMetodosPago();
+  }
+
+  async listarMetodosEntregaCatalogo() {
+    return this.repository.listarCatalogoMetodosEntrega();
+  }
+
+  // ── Métodos de pago (tienda) ──
 
   async agregarMetodoPago(usuarioId: number, datos: AgregarMetodoPagoDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
@@ -163,9 +174,40 @@ export class TiendasService {
 
   // ── Carrusel ──
 
-  async agregarImagenCarrusel(usuarioId: number, datos: AgregarImagenCarruselDto) {
+  async agregarImagenCarrusel(
+    usuarioId: number,
+    datos: AgregarImagenCarruselDto,
+    buffers: Express.Multer.File[] = []
+  ) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
-    return this.repository.agregarImagenCarrusel(tienda.id, datos);
+    const imagenesCreadas = [];
+
+    // Si hay archivos subidos, crear un registro por cada uno
+    if (buffers && buffers.length > 0) {
+      for (const file of buffers) {
+        const url = await uploadImageToCloudinary(file.buffer);
+        const resultado = await this.repository.agregarImagenCarrusel(tienda.id, {
+          url,
+          titulo: datos.titulo,
+          subtitulo: datos.subtitulo,
+          linkUrl: datos.linkUrl,
+          orden: datos.orden,
+        });
+        imagenesCreadas.push(resultado);
+      }
+    } else if (datos.url) {
+      // Si no hay archivos pero sí URL en el body, agregar una imagen
+      const resultado = await this.repository.agregarImagenCarrusel(tienda.id, {
+        url: datos.url,
+        titulo: datos.titulo,
+        subtitulo: datos.subtitulo,
+        linkUrl: datos.linkUrl,
+        orden: datos.orden,
+      });
+      imagenesCreadas.push(resultado);
+    }
+
+    return imagenesCreadas;
   }
 
   async eliminarImagenCarrusel(usuarioId: number, imagenId: number) {

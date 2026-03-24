@@ -7,6 +7,7 @@ import { ProductosController } from "./productos.controller";
 import { validar } from "../../middleware/validar.middleware";
 import { autenticar, autorizar } from "../../middleware/auth.middleware";
 import { RolUsuario } from "@prisma/client";
+import { uploadSingle } from "@/config/multer.config";
 import {
   CrearProductoSchema,
   ActualizarProductoSchema,
@@ -31,6 +32,17 @@ productosPublicosRouter.get(
   validar(FiltrosProductosSchema, "query"),
   controller.listarPublicos
 );
+productosPublicosRouter.get("/categorias", controller.listarCategoriasPublicas);
+productosPublicosRouter.get(
+  "/destacados",
+  validar(FiltrosProductosSchema, "query"),
+  controller.listarDestacados
+);
+productosPublicosRouter.get(
+  "/normales",
+  validar(FiltrosProductosSchema, "query"),
+  controller.listarNormales
+);
 productosPublicosRouter.get("/:productoId", controller.obtenerPublico);
 
 // ─────────────────────────────────────────────
@@ -39,6 +51,13 @@ productosPublicosRouter.get("/:productoId", controller.obtenerPublico);
 
 export const misProductosRouter = Router();
 
+// Categorías (Globales)
+misProductosRouter.get("/categorias", ...soloOwner, controller.listarCategorias);
+
+// Excel: Import/Export
+misProductosRouter.get("/exportar", ...soloOwner, controller.exportar);
+misProductosRouter.post("/importar", ...soloOwner, uploadSingle, controller.importar);
+
 // CRUD de productos
 misProductosRouter.get(
   "/",
@@ -46,7 +65,7 @@ misProductosRouter.get(
   validar(FiltrosProductosSchema, "query"),
   controller.listarMisProductos
 );
-misProductosRouter.post("/", ...soloOwner, validar(CrearProductoSchema), controller.crear);
+misProductosRouter.post("/", ...soloOwner, uploadSingle, validar(CrearProductoSchema), controller.crear);
 misProductosRouter.get("/:productoId", ...soloOwner, controller.obtenerMiProducto);
 misProductosRouter.put("/:productoId", ...soloOwner, validar(ActualizarProductoSchema), controller.actualizar);
 misProductosRouter.delete("/:productoId", ...soloOwner, controller.eliminar);
@@ -60,7 +79,7 @@ misProductosRouter.put(
 );
 
 // Imágenes
-misProductosRouter.post("/:productoId/imagenes", ...soloOwner, validar(AgregarImagenSchema), controller.agregarImagen);
+misProductosRouter.post("/:productoId/imagenes", ...soloOwner, uploadSingle, validar(AgregarImagenSchema), controller.agregarImagen);
 misProductosRouter.delete("/:productoId/imagenes/:imagenId", ...soloOwner, controller.eliminarImagen);
 
 // Variantes

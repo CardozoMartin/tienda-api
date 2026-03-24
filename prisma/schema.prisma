@@ -17,34 +17,13 @@ enum RolUsuario {
   CLIENT
 }
 
-enum NavbarStyle {
-  TRANSPARENT
-  SOLID
-  STICKY
-}
 
-enum HeroLayout {
-  CENTERED
-  LEFT
-  SPLIT
-  FULLSCREEN
-}
 
-enum CardStyle {
-  MINIMAL
-  ROUNDED
-  BOLD
-  ELEGANT
-  PLAYFUL
-}
 
-enum BorderRadius {
-  NONE
-  SM
-  MD
-  LG
-  FULL
-}
+
+
+
+
 
 // ─────────────────────────────────────────────
 // USUARIO
@@ -139,33 +118,27 @@ model Tienda {
 // TEMA CONFIG
 // ─────────────────────────────────────────────
 
-model TiendaTemaConfig {
-  tiendaId          Int    @id
-  colorPrimario     String? @db.Char(7)
-  colorSecundario   String? @db.Char(7)
-  colorAcento       String? @db.Char(7)
-  colorFondo        String? @db.Char(7)
-  colorTexto        String? @db.Char(7)
-  colorBoton        String? @db.Char(7)
-  colorTextoBoton   String? @db.Char(7)
-  colorNavbarBg     String? @db.Char(7)
-  colorNavbarText   String? @db.Char(7)
-  fuenteTitulo      String? @db.VarChar(150)
-  fuenteCuerpo      String? @db.VarChar(150)
-  navbarStyle       NavbarStyle?
-  heroLayout        HeroLayout?
-  cardStyle         CardStyle?
-  borderRadius      BorderRadius?
-  heroTitulo        String? @db.VarChar(200)
-  heroSubtitulo     String? @db.VarChar(300)
-  heroCtaTexto      String? @db.VarChar(100)
-  cardMostrarPrecio Boolean @default(true)
-  cardMostrarBadge  Boolean @default(true)
-  seccionesVisibles Json?
-  creadoEn          DateTime @default(now())
-  actualizadoEn     DateTime @updatedAt
+enum NavbarStyle {
+  STICKY
+  TRANSPARENT
+  FLOATING
+}
 
-  tienda            Tienda @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+model TiendaTemaConfig {
+  tiendaId          Int         @id
+  colorAcento       String?     @db.Char(7)
+  modoOscuro        Boolean     @default(true)
+  navbarStyle       NavbarStyle @default(TRANSPARENT)
+  heroTitulo        String?     @db.VarChar(200)
+  heroSubtitulo     String?     @db.VarChar(300)
+  heroCtaTexto      String?     @db.VarChar(100)
+  cardMostrarPrecio Boolean     @default(true)
+  cardMostrarBadge  Boolean     @default(true)
+  seccionesVisibles Json?
+  creadoEn          DateTime    @default(now())
+  actualizadoEn     DateTime    @updatedAt
+
+  tienda Tienda @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
 
   @@map("tienda_tema_config")
 }

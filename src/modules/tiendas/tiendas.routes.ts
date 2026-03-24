@@ -14,6 +14,8 @@ import {
   CrearTiendaSchema,
   FiltrosTiendasSchema,
 } from './tiendas.dto';
+import { uploadMultiple } from '@/config/multer.config';
+
 
 const router = Router();
 const controller = new TiendasController();
@@ -24,6 +26,10 @@ const controller = new TiendasController();
 
 // Directorio de tiendas
 router.get('/', validar(FiltrosTiendasSchema, 'query'), controller.listar);
+
+// Catálogo de métodos (Público/Owner)
+router.get('/metodos-pago', controller.listarMetodosPago);
+router.get('/metodos-entrega', controller.listarMetodosEntrega);
 
 // ─────────────────────────────────────────────
 // RUTAS PROTEGIDAS - OWNER
@@ -69,7 +75,7 @@ router.delete(
 // Carrusel de imágenes
 router.post(
   '/mi-tienda/carrusel',
-  ...soloOwner,
+  ...soloOwner,uploadMultiple,
   validar(AgregarImagenCarruselSchema),
   controller.agregarImagenCarrusel
 );

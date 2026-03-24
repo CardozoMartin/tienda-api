@@ -86,6 +86,26 @@ export class TiendasController {
     }
   };
 
+  // ── Catálogo de métodos ──
+
+  listarMetodosPago = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const metodos = await this.service.listarMetodosPagoCatalogo();
+      responderOk(res, metodos, 'Catálogo de métodos de pago obtenido');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  listarMetodosEntrega = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const metodos = await this.service.listarMetodosEntregaCatalogo();
+      responderOk(res, metodos, 'Catálogo de métodos de entrega obtenido');
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // ── Métodos de pago ──
 
   /**
@@ -158,6 +178,7 @@ export class TiendasController {
 
   /**
    * POST /tiendas/mi-tienda/carrusel
+   * Puede recibir archivos (form-data) o URL en JSON body
    */
   agregarImagenCarrusel = async (
     req: Request,
@@ -166,11 +187,13 @@ export class TiendasController {
   ): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
-      const imagen = await this.service.agregarImagenCarrusel(
+      const photoBuffers = (req.files as Express.Multer.File[]) || [];
+      const imagenes = await this.service.agregarImagenCarrusel(
         usuarioId,
-        req.body as AgregarImagenCarruselDto
+        req.body as AgregarImagenCarruselDto,
+        photoBuffers
       );
-      responderOk(res, imagen, 'Imagen agregada al carrusel', 201);
+      responderOk(res, imagenes, 'Imagen(nes) agregada(s) al carrusel', 201);
     } catch (error) {
       next(error);
     }

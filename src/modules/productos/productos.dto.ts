@@ -15,7 +15,7 @@ const VarianteSchema = z.object({
   // precioExtra puede ser 0 (sin costo adicional) o positivo
   precioExtra: z.coerce.number().min(0).default(0),
   imagenUrl: z.string().url("URL de imagen inválida").optional(),
-  disponible: z.boolean().default(true),
+  disponible: z.coerce.boolean().default(true),
 });
 
 // ─────────────────────────────────────────────
@@ -41,7 +41,8 @@ const ProductoBaseSchema = z.object({
     .number()
     .positive("El precio de oferta debe ser mayor a 0")
     .multipleOf(0.01)
-    .optional(),
+    .optional()
+    .or(z.literal("")), // Permite string vacío de FormData
 
   moneda: z
     .string()
@@ -49,16 +50,26 @@ const ProductoBaseSchema = z.object({
     .toUpperCase()
     .default("ARS"),
 
-  imagenPrincipalUrl: z.string().url("URL de imagen inválida").optional(),
+  imagenPrincipalUrl: z.string().url("URL de imagen inválida").optional().or(z.literal("")),
 
-  categoriaId: z.number().int().positive().optional(),
+  categoriaId: z.coerce.number().int().positive().optional(),
 
-  disponible: z.boolean().default(true),
-  destacado: z.boolean().default(false),
+  disponible: z.coerce.boolean().default(true),
+  destacado: z.coerce.boolean().default(false),
 
-  tags: z.array(z.string().max(80).trim()).max(10, "Máximo 10 tags por producto").default([]),
+  // Al usar FormData, tags puede venir como una sola string separada por comas or multiple fields.
+  // Pero aquí el backend lo espera como array. Multer no lo parsea a array automáticamente si no se envía repetido.
+  tags: z.preprocess((val) => {
+    if (typeof val === 'string') return val.split(',').map(t => t.trim()).filter(Boolean);
+    return val;
+  }, z.array(z.string().max(80).trim()).max(10, "Máximo 10 tags por producto").default([])),
 
-  variantes: z.array(VarianteSchema).default([]),
+  variantes: z.preprocess((val) => {
+    if (typeof val === 'string') {
+      try { return JSON.parse(val); } catch { return []; }
+    }
+    return val;
+  }, z.array(VarianteSchema).default([])),
 });
 
 // Aplicamos refine DESPUÉS para validación cruzada precio/precioOferta
@@ -90,12 +101,12 @@ export const ActualizarVarianteSchema = VarianteSchema.partial();
 export type ActualizarVarianteDto = z.infer<typeof ActualizarVarianteSchema>;
 
 // ─────────────────────────────────────────────
-// AGREGAR IMAGEN
+// AGREGAR IMAGEN (URL o archivo via multer)
 // ─────────────────────────────────────────────
 
 export const AgregarImagenSchema = z.object({
-  url: z.string().url("URL de imagen inválida").max(500),
-  orden: z.number().int().min(0).default(0),
+  url: z.string().url("URL de imagen inválida").max(500).optional(),
+  orden: z.coerce.number().int().min(0).default(0),
 });
 
 export type AgregarImagenDto = z.infer<typeof AgregarImagenSchema>;

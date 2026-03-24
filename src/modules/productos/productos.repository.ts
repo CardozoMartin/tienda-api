@@ -1,27 +1,19 @@
-// Repository de productos.
-// Solo acceso a datos, sin lógica de negocio.
-import { prisma } from "../../config/prisma";
-import { calcularSkip } from "../../utils/helpers";
-import { FiltrosProductosDto } from "./productos.dto";
+import { prisma } from '../../config/prisma';
+import { calcularSkip } from '../../utils/helpers';
+import { FiltrosProductosDto } from './productos.dto';
 
-// Usamos el tipo de retorno inferido de Prisma para no depender del cliente generado.
-// Una vez que se ejecuta `prisma generate`, estos tipos se vuelven completamente seguros.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type WhereInput = Record<string, any>;
 
 const INCLUDE_PRODUCTO = {
   categoria: true,
-  imagenes: { orderBy: { orden: "asc" as const } },
+  imagenes: { orderBy: { orden: 'asc' as const } },
   variantes: true,
   tags: true,
   _count: { select: { resenas: true } },
 } as const;
 
 export class ProductosRepository {
-  /**
-   * Busca un producto por ID verificando que pertenezca a la tienda indicada.
-   * La verificación de tienda evita que un owner acceda a productos de otra tienda.
-   */
+  /// Busca un producto por ID, opcionalmente filtrando por tiendaId para asegurar que pertenece a la tienda.
   async buscarPorId(productoId: number, tiendaId?: number) {
     return prisma.producto.findFirst({
       where: {
@@ -32,9 +24,15 @@ export class ProductosRepository {
     });
   }
 
-  /**
-   * Lista productos de una tienda con filtros y paginación.
-   */
+  // Busca un producto por su nombre exacto dentro de una tienda (para evitar duplicados al crear/actualizar)
+  async buscarPorNombre(nombre: string, tiendaId: number) {
+    return prisma.producto.findFirst({
+      where: { nombre, tiendaId },
+      include: { id: true } as any,
+    });
+  }
+
+  // ── Operaciones principales ──
   async listar(
     tiendaId: number,
     filtros: FiltrosProductosDto,
@@ -67,7 +65,7 @@ export class ProductosRepository {
       // Filtro por tags (cualquier coincidencia)
       ...(filtros.tags && {
         tags: {
-          some: { nombre: { in: filtros.tags.split(",").map((t) => t.trim()) } },
+          some: { nombre: { in: filtros.tags.split(',').map((t) => t.trim()) } },
         },
       }),
     };
@@ -86,10 +84,7 @@ export class ProductosRepository {
     return { datos, total };
   }
 
-  /**
-   * Crea un producto con sus variantes y tags.
-   * Los tags se crean si no existen (connectOrCreate).
-   */
+  // Crea un nuevo producto junto con sus variantes y tags en una sola operación atómica.
   async crear(datos: {
     tiendaId: number;
     nombre: string;
@@ -129,9 +124,7 @@ export class ProductosRepository {
     });
   }
 
-  /**
-   * Actualiza los campos de un producto.
-   */
+  // Actualiza un producto y opcionalmente sus variantes. No actualiza tags ni imágenes (se manejan con métodos específicos).
   async actualizar(productoId: number, datos: WhereInput) {
     return prisma.producto.update({
       where: { id: productoId },
@@ -140,17 +133,12 @@ export class ProductosRepository {
     });
   }
 
-  /**
-   * Elimina un producto (en cascada sus imágenes, variantes y relaciones de tags).
-   */
+  // Elimina un producto por ID. Las relaciones con variantes, imágenes y tags se eliminan automáticamente si están configuradas con onDelete: "cascade" en el esquema de Prisma.
   async eliminar(productoId: number): Promise<void> {
     await prisma.producto.delete({ where: { id: productoId } });
   }
 
-  /**
-   * Sincroniza los tags de un producto:
-   * Desconecta todos los actuales y conecta los nuevos.
-   */
+  // Sincroniza los tags de un producto: elimina los actuales y conecta/crea los nuevos según el array recibido.
   async sincronizarTags(productoId: number, tags: string[]): Promise<void> {
     await prisma.producto.update({
       where: { id: productoId },
@@ -167,9 +155,7 @@ export class ProductosRepository {
     });
   }
 
-  /**
-   * Incrementa el contador de vistas de un producto.
-   */
+  // Incrementa el contador de vistas de un producto (se llama cada vez que se obtiene un producto público).
   async incrementarVistas(productoId: number): Promise<void> {
     await prisma.producto.update({
       where: { id: productoId },
@@ -211,5 +197,20 @@ export class ProductosRepository {
 
   async eliminarVariante(varianteId: number, productoId: number): Promise<void> {
     await prisma.productoVariante.deleteMany({ where: { id: varianteId, productoId } });
+  }
+
+  // ── Categorías (Globales) ──
+
+  async listarCategorias() {
+    return prisma.categoria.findMany({
+      where: { activa: true },
+      orderBy: { nombre: 'asc' },
+      select: {
+        id: true,
+        nombre: true,
+        slug: true,
+        padreId: true,
+      },
+    });
   }
 }
