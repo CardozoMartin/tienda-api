@@ -1,17 +1,17 @@
 // Controller de tiendas.
-import { Request, Response, NextFunction } from "express";
-import { TiendasService } from "./tiendas.service";
-import { responderOk, responderPaginado } from "../../utils/helpers";
-import { RequestAutenticado } from "../../types";
+import { NextFunction, Request, Response } from 'express';
+import { RequestAutenticado } from '../../types';
+import { responderOk, responderPaginado } from '../../utils/helpers';
 import {
-  CrearTiendaDto,
-  ActualizarTiendaDto,
   ActualizarTemaDto,
-  AgregarMetodoPagoDto,
-  AgregarMetodoEntregaDto,
+  ActualizarTiendaDto,
   AgregarImagenCarruselDto,
+  AgregarMetodoEntregaDto,
+  AgregarMetodoPagoDto,
+  CrearTiendaDto,
   FiltrosTiendasDto,
-} from "./tiendas.dto";
+} from './tiendas.dto';
+import { TiendasService } from './tiendas.service';
 
 export class TiendasController {
   private service: TiendasService;
@@ -25,7 +25,7 @@ export class TiendasController {
     try {
       const filtros = req.query as unknown as FiltrosTiendasDto;
       const resultado = await this.service.listar(filtros);
-      responderPaginado(res, resultado, "Tiendas obtenidas exitosamente");
+      responderPaginado(res, resultado, 'Tiendas obtenidas exitosamente');
     } catch (error) {
       next(error);
     }
@@ -36,7 +36,7 @@ export class TiendasController {
     try {
       const { slug } = req.params as { slug: string };
       const tienda = await this.service.obtenerPorSlug(slug);
-      responderOk(res, tienda, "Tienda obtenida exitosamente");
+      responderOk(res, tienda, 'Tienda obtenida exitosamente');
     } catch (error) {
       next(error);
     }
@@ -47,18 +47,18 @@ export class TiendasController {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const tienda = await this.service.obtenerMiTienda(usuarioId);
-      responderOk(res, tienda, "Tienda obtenida exitosamente");
+      responderOk(res, tienda, 'Tienda obtenida exitosamente');
     } catch (error) {
       next(error);
     }
   };
 
-//controlador para crear una tienda, solo para usuarios autenticados que no tengan tienda aún
+  //controlador para crear una tienda, solo para usuarios autenticados que no tengan tienda aún
   crear = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const tienda = await this.service.crear(usuarioId, req.body as CrearTiendaDto);
-      responderOk(res, tienda, "Tienda creada exitosamente", 201);
+      responderOk(res, tienda, 'Tienda creada exitosamente', 201);
     } catch (error) {
       next(error);
     }
@@ -69,18 +69,38 @@ export class TiendasController {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const tienda = await this.service.actualizar(usuarioId, req.body as ActualizarTiendaDto);
-      responderOk(res, tienda, "Tienda actualizada exitosamente");
+      responderOk(res, tienda, 'Tienda actualizada exitosamente');
     } catch (error) {
       next(error);
     }
   };
 
- //controlador para actualizar el tema visual de la tienda del usuario autenticado
+  //controlador para actualizar el tema visual de la tienda del usuario autenticado
   actualizarTema = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const tema = await this.service.actualizarTema(usuarioId, req.body as ActualizarTemaDto);
-      responderOk(res, tema, "Tema actualizado exitosamente");
+      responderOk(res, tema, 'Tema actualizado exitosamente');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ── Catálogo de métodos ──
+
+  listarMetodosPago = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const metodos = await this.service.listarMetodosPagoCatalogo();
+      responderOk(res, metodos, 'Catálogo de métodos de pago obtenido');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  listarMetodosEntrega = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const metodos = await this.service.listarMetodosEntregaCatalogo();
+      responderOk(res, metodos, 'Catálogo de métodos de entrega obtenido');
     } catch (error) {
       next(error);
     }
@@ -94,8 +114,11 @@ export class TiendasController {
   agregarMetodoPago = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
-      const resultado = await this.service.agregarMetodoPago(usuarioId, req.body as AgregarMetodoPagoDto);
-      responderOk(res, resultado, "Método de pago agregado", 201);
+      const resultado = await this.service.agregarMetodoPago(
+        usuarioId,
+        req.body as AgregarMetodoPagoDto
+      );
+      responderOk(res, resultado, 'Método de pago agregado', 201);
     } catch (error) {
       next(error);
     }
@@ -107,9 +130,9 @@ export class TiendasController {
   eliminarMetodoPago = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
-      const metodoPagoId = parseInt(req.params["metodoPagoId"] as string, 10);
+      const metodoPagoId = parseInt(req.params['metodoPagoId'] as string, 10);
       await this.service.eliminarMetodoPago(usuarioId, metodoPagoId);
-      responderOk(res, null, "Método de pago eliminado");
+      responderOk(res, null, 'Método de pago eliminado');
     } catch (error) {
       next(error);
     }
@@ -123,8 +146,11 @@ export class TiendasController {
   agregarMetodoEntrega = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
-      const resultado = await this.service.agregarMetodoEntrega(usuarioId, req.body as AgregarMetodoEntregaDto);
-      responderOk(res, resultado, "Método de entrega agregado", 201);
+      const resultado = await this.service.agregarMetodoEntrega(
+        usuarioId,
+        req.body as AgregarMetodoEntregaDto
+      );
+      responderOk(res, resultado, 'Método de entrega agregado', 201);
     } catch (error) {
       next(error);
     }
@@ -133,12 +159,16 @@ export class TiendasController {
   /**
    * DELETE /tiendas/mi-tienda/metodos-entrega/:metodoEntregaId
    */
-  eliminarMetodoEntrega = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  eliminarMetodoEntrega = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
-      const metodoEntregaId = parseInt(req.params["metodoEntregaId"] as string, 10);
+      const metodoEntregaId = parseInt(req.params['metodoEntregaId'] as string, 10);
       await this.service.eliminarMetodoEntrega(usuarioId, metodoEntregaId);
-      responderOk(res, null, "Método de entrega eliminado");
+      responderOk(res, null, 'Método de entrega eliminado');
     } catch (error) {
       next(error);
     }
@@ -148,12 +178,22 @@ export class TiendasController {
 
   /**
    * POST /tiendas/mi-tienda/carrusel
+   * Puede recibir archivos (form-data) o URL en JSON body
    */
-  agregarImagenCarrusel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  agregarImagenCarrusel = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
-      const imagen = await this.service.agregarImagenCarrusel(usuarioId, req.body as AgregarImagenCarruselDto);
-      responderOk(res, imagen, "Imagen agregada al carrusel", 201);
+      const photoBuffers = (req.files as Express.Multer.File[]) || [];
+      const imagenes = await this.service.agregarImagenCarrusel(
+        usuarioId,
+        req.body as AgregarImagenCarruselDto,
+        photoBuffers
+      );
+      responderOk(res, imagenes, 'Imagen(nes) agregada(s) al carrusel', 201);
     } catch (error) {
       next(error);
     }
@@ -162,12 +202,16 @@ export class TiendasController {
   /**
    * DELETE /tiendas/mi-tienda/carrusel/:imagenId
    */
-  eliminarImagenCarrusel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  eliminarImagenCarrusel = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
-      const imagenId = parseInt(req.params["imagenId"] as string, 10);
+      const imagenId = parseInt(req.params['imagenId'] as string, 10);
       await this.service.eliminarImagenCarrusel(usuarioId, imagenId);
-      responderOk(res, null, "Imagen eliminada del carrusel");
+      responderOk(res, null, 'Imagen eliminada del carrusel');
     } catch (error) {
       next(error);
     }
@@ -182,7 +226,7 @@ export class TiendasController {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const orden = req.body as Array<{ id: number; orden: number }>;
       await this.service.reordenarCarrusel(usuarioId, orden);
-      responderOk(res, null, "Orden del carrusel actualizado");
+      responderOk(res, null, 'Orden del carrusel actualizado');
     } catch (error) {
       next(error);
     }

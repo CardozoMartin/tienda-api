@@ -1,7 +1,7 @@
 --Como crear una tienda tipo de json y datos
 http://localhost:3000/api/v1/tiendas/
 se debe enviar el token de access con roles de OWNER
-TAMBIEN DEBE EXISTIR LA PLANTILLA 
+TAMBIEN DEBE EXISTIR LA PLANTILLA
 {
     "nombre":"Tienda Martin",
     "titulo":"Todo los que necesitas para ser feliz",
@@ -14,4 +14,7 @@ TAMBIEN DEBE EXISTIR LA PLANTILLA
     "provincia":"Tucuman",
     "ciudad":"Alderetes"
 }
+
+
+--como agregar imagenes a un carrusel de una tienda
 
