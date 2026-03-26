@@ -4,7 +4,6 @@ import express, { Application } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import rateLimit from "express-rate-limit";
 import { env } from "./config/env";
 import router from "./router";
 import { manejadorErrores, noEncontrado } from "./middleware/errores.middleware";

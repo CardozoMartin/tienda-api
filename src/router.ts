@@ -7,10 +7,12 @@ import tiendasRouter from "./modules/tiendas/tiendas.routes";
 import { productosPublicosRouter, misProductosRouter } from "./modules/productos/productos.routes";
 import { resenasTiendaRouter, resenasProductoRouter } from "./modules/resenas/resenas.module";
 import { adminRouter } from "./modules/admin/admin.module";
+import clientesRouter from "./modules/clientes/cliente.routes";
 
 const router = Router();
 
 router.use("/auth", authRouter);
+router.use("/clientes", clientesRouter);
 router.use("/tiendas", tiendasRouter);
 router.use("/tiendas/:tiendaId/productos", productosPublicosRouter);
 router.use("/mis-productos", misProductosRouter);

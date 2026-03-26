@@ -1,5 +1,5 @@
 // DTOs y schemas de validación para el módulo de tiendas.
-import { BorderRadius, CardStyle, HeroLayout, NavbarStyle } from '@prisma/client';
+// import { BorderRadius, CardStyle, HeroLayout, NavbarStyle } from '@prisma/client';
 import { z } from 'zod';
 
 // Validador de color hexadecimal (#RRGGBB)
@@ -64,7 +64,7 @@ const SeccionesVisiblesSchema = z
 export const ActualizarTemaSchema = z.object({
   colorAcento: colorHex,
   modoOscuro: z.boolean().optional(),
-  navbarStyle: z.nativeEnum(NavbarStyle).optional(),
+  navbarStyle: z.string().optional(),
   heroTitulo: z.string().max(200).optional(),
   heroSubtitulo: z.string().max(300).optional(),
   heroCtaTexto: z.string().max(100).optional(),
