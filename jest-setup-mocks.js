@@ -16,6 +16,12 @@ global.PRISMA_MOCK = {
     create: jest.fn().mockResolvedValue({}),
     update: jest.fn().mockResolvedValue({}),
   },
+  tienda: {
+    findUnique: jest.fn().mockResolvedValue(null),
+    findFirst: jest.fn().mockResolvedValue(null),
+    create: jest.fn().mockResolvedValue({}),
+    update: jest.fn().mockResolvedValue({}),
+  },
 };
 
 console.log('[jest-setup-mocks.js] Mock global configurado:', Object.keys(global.PRISMA_MOCK));

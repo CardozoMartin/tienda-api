@@ -109,6 +109,8 @@ model Tienda {
   carrusel       CarruselImagen[]
   resenas        ResenaTienda[]
   clientes     ClienteTienda[]
+  carritos  Carrito[]
+pedidos   Pedido[]
 
   @@index([usuarioId])
   @@index([plantillaId])
@@ -157,6 +159,7 @@ model MetodoPago {
   orden       Int                @default(0)
 
   tiendas     MetodoPagoTienda[]
+  pedidos  Pedido[]
 
   @@map("metodos_pago")
 }
@@ -175,6 +178,7 @@ model MetodoEntrega {
   orden        Int                   @default(0)
 
   tiendas      MetodoEntregaTienda[]
+  pedidos  Pedido[]
 
   @@map("metodos_entrega")
 }
@@ -292,6 +296,8 @@ model Producto {
   variantes ProductoVariante[]
   tags      Tag[]
   resenas   ResenaProducto[]
+  carritoItems  CarritoItem[]
+pedidoItems   PedidoItem[]
 
   @@index([tiendaId])
   @@index([categoriaId])
@@ -328,7 +334,8 @@ model ProductoVariante {
   disponible  Boolean  @default(true)
 
   producto    Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
-
+carritoItems  CarritoItem[]
+pedidoItems   PedidoItem[]
   @@index([productoId])
   @@map("producto_variantes")
 }
@@ -423,6 +430,8 @@ model ClienteTienda {
 
   tienda           Tienda           @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
   direcciones      DireccionCliente[]
+  carritos  Carrito[]
+pedidos   Pedido[]
   // pedidos          Pedido[]         // lo usás cuando implementes pedidos
 
   // La clave: mismo email puede existir en distintas tiendas
@@ -455,4 +464,128 @@ model DireccionCliente {
 
   @@index([clienteId])
   @@map("direcciones_cliente")
+}
+
+
+// ─────────────────────────────────────────────
+// CARRITO
+// ─────────────────────────────────────────────
+// El carrito persiste en DB. Si el cliente está
+// logueado se asocia a clienteId, si es invitado
+// se identifica por sessionId (UUID generado en frontend)
+
+model Carrito {
+  id          Int      @id @default(autoincrement())
+  tiendaId    Int
+  clienteId   Int?     // null = invitado
+  sessionId   String   @db.VarChar(100) // UUID del browser, siempre presente
+  expiresAt   DateTime // se limpia con un cron si no se convierte en pedido
+  creadoEn    DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  tienda      Tienda         @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  cliente     ClienteTienda? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  items       CarritoItem[]
+
+  // Un sessionId solo tiene un carrito activo por tienda
+  @@unique([tiendaId, sessionId])
+  @@index([clienteId])
+  @@map("carritos")
+}
+
+model CarritoItem {
+  id         Int      @id @default(autoincrement())
+  carritoId  Int
+  productoId Int
+  varianteId Int?
+  cantidad   Int      @default(1)
+  // Snapshot del precio al momento de agregar
+  // (puede cambiar antes de confirmar)
+  precioUnit Decimal  @db.Decimal(12, 2)
+  creadoEn   DateTime @default(now())
+
+  carrito    Carrito          @relation(fields: [carritoId], references: [id], onDelete: Cascade)
+  producto   Producto         @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  variante   ProductoVariante? @relation(fields: [varianteId], references: [id], onDelete: SetNull)
+
+  @@index([carritoId, productoId]) // no duplicar el mismo producto+variante
+  @@index([productoId])
+  @@map("carrito_items")
+}
+
+// ─────────────────────────────────────────────
+// PEDIDO
+// ─────────────────────────────────────────────
+
+enum EstadoPedido {
+  PENDIENTE    // recién creado, esperando confirmación del owner
+  CONFIRMADO   // owner lo aceptó
+  EN_CAMINO    // salió para entrega
+  ENTREGADO    // entregado al cliente
+  CANCELADO    // cancelado por cualquiera de las partes
+}
+
+model Pedido {
+  id               Int          @id @default(autoincrement())
+  tiendaId         Int
+  clienteId        Int?         // null = invitado
+  // ── Datos del comprador (snapshot) ──────────
+  // Se guardan aunque el cliente borre su cuenta
+  compradorNombre  String       @db.VarChar(150)
+  compradorEmail   String       @db.VarChar(180)
+  compradorTel     String       @db.VarChar(30)
+  // ── Entrega ─────────────────────────────────
+  metodoEntregaId  Int
+  // Snapshot de la dirección al momento del pedido
+  direccionCalle   String       @db.VarChar(150)
+  direccionNumero  String?      @db.VarChar(20)
+  direccionPiso    String?      @db.VarChar(20)
+  direccionCiudad  String       @db.VarChar(80)
+  direccionProv    String       @db.VarChar(80)
+  direccionCP      String?      @db.VarChar(20)
+  direccionNotas   String?      @db.VarChar(300)
+  // ── Pago ────────────────────────────────────
+  metodoPagoId     Int
+  // ── Totales ─────────────────────────────────
+  subtotal         Decimal      @db.Decimal(12, 2)
+  total            Decimal      @db.Decimal(12, 2)
+  moneda           String       @default("ARS") @db.Char(3)
+  // ── Estado ──────────────────────────────────
+  estado           EstadoPedido @default(PENDIENTE)
+  notasCliente     String?      @db.Text
+  notasOwner       String?      @db.Text  // notas internas del dueño
+  creadoEn         DateTime     @default(now())
+  actualizadoEn    DateTime     @updatedAt
+
+  tienda         Tienda        @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  cliente        ClienteTienda? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  metodoEntrega  MetodoEntrega @relation(fields: [metodoEntregaId], references: [id])
+  metodoPago     MetodoPago    @relation(fields: [metodoPagoId], references: [id])
+  items          PedidoItem[]
+
+  @@index([tiendaId])
+  @@index([clienteId])
+  @@index([estado])
+  @@map("pedidos")
+}
+
+model PedidoItem {
+  id           Int      @id @default(autoincrement())
+  pedidoId     Int
+  productoId   Int
+  varianteId   Int?
+  // Snapshots — el producto puede cambiar después
+  nombreProd   String   @db.VarChar(200)
+  nombreVar    String?  @db.VarChar(150)
+  imagenUrl    String?  @db.VarChar(500)
+  cantidad     Int
+  precioUnit   Decimal  @db.Decimal(12, 2)
+  subtotal     Decimal  @db.Decimal(12, 2) // precioUnit * cantidad
+
+  pedido       Pedido           @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  producto     Producto         @relation(fields: [productoId], references: [id], onDelete: Restrict)
+  variante     ProductoVariante? @relation(fields: [varianteId], references: [id], onDelete: SetNull)
+
+  @@index([pedidoId])
+  @@map("pedido_items")
 }

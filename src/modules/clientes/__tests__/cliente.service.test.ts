@@ -5,6 +5,7 @@ import { ClienteService } from '../cliente.service';
 // Mock de emails
 jest.mock('../../../utils/emails', () => ({
   enviarEmailVerificacion: jest.fn().mockResolvedValue(true),
+  enviarEmailVerificacionAlCliente: jest.fn().mockResolvedValue(true),
 }));
 
 describe('ClienteService', () => {
@@ -17,6 +18,7 @@ describe('ClienteService', () => {
     prismaMock.clienteTienda.findFirst.mockResolvedValue(null);
     prismaMock.clienteTienda.create.mockResolvedValue({});
     prismaMock.clienteTienda.update.mockResolvedValue({});
+    prismaMock.tienda.findUnique.mockResolvedValue({ id: 1, nombre: 'Tienda Test' });
     service = new ClienteService();
   });
 
@@ -179,7 +181,7 @@ describe('ClienteService', () => {
         email: 'juan@example.com',
         passwordHash: passwordHasheada,
         activo: true,
-        emailVerificado: false,
+        emailVerificado: true,
       });
 
       // EXECUTE & VALIDATE

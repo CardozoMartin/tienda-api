@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../../config/prisma';
 import { ErrorApi } from '../../types';
-import { enviarEmailVerificacion } from '../../utils/emails';
+import { enviarEmailVerificacionAlCliente } from '../../utils/emails';
 import {
   ActualizarClienteInput,
   CambiarPasswordClienteInput,
@@ -12,17 +12,18 @@ import {
   RegistroClienteInput,
 } from './cliente.dto';
 import { ClienteRepository } from './cliente.repository';
+import { TiendasRepository } from '../tiendas/tiendas.repository';
 
 export class ClienteService {
   private repo: ClienteRepository;
+  private tiendarepo: TiendasRepository
 
   constructor() {
     this.repo = new ClienteRepository();
+    this.tiendarepo = new TiendasRepository();
   }
 
-  /**
-   * REGISTRO: Crear nuevo cliente
-   */
+  //servicio para registrar un nuevo cliente
   async registro(input: RegistroClienteInput) {
     // Verificar si email ya existe en esta tienda
     const clienteExistente = await this.repo.buscarPorEmailEnTienda(input.email, input.tiendaId);
@@ -49,11 +50,15 @@ export class ClienteService {
       tokenVerif,
       tokenVerifVenc,
     });
-
+    //ahora buscamos la tienda para obtener su nombre y poder incluirlo en el email
+    const tienda = await this.tiendarepo.buscarPorId(input.tiendaId);
+    console.log('Tienda encontrada para email de verificación:', tienda);
     // Enviar email de verificación (sin await para no bloquear)
-    enviarEmailVerificacion(input.email, input.nombre, tokenVerif).catch((err: Error) =>
+    enviarEmailVerificacionAlCliente(input.email, input.nombre, tokenVerif, tienda.nombre).catch((err: Error) =>
       console.error('Error enviando email verificación:', err)
     );
+
+ 
 
     return {
       id: cliente.id,
@@ -64,9 +69,7 @@ export class ClienteService {
     };
   }
 
-  /**
-   * LOGIN: Autenticar cliente y generar JWT
-   */
+  //servicio para iniciar sesión de un cliente
   async login(input: LoginClienteInput): Promise<LoginResponse> {
     // Buscar cliente
     const cliente = await this.repo.buscarPorEmailEnTienda(input.email, input.tiendaId);
@@ -78,6 +81,10 @@ export class ClienteService {
     // Verificar que cliente está activo
     if (!cliente.activo) {
       throw new ErrorApi('Esta cuenta ha sido desactivada', 403);
+    }
+    //verificamos que el email este activo
+    if (!cliente.emailVerificado) {
+      throw new ErrorApi('Por favor verifica tu email antes de iniciar sesión', 403);
     }
 
     // Comparar contraseña
