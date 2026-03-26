@@ -1,7 +1,7 @@
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { crearApp } from '../../../app';
 import { ClienteService } from '../cliente.service';
-import jwt from 'jsonwebtoken';
 
 // Mock del service
 jest.mock('../cliente.service', () => ({
@@ -116,12 +116,10 @@ describe('ClienteController', () => {
         mensaje: 'Email verificado correctamente',
       });
 
-      const res = await request(app).get(
-        '/api/v1/clientes/verificar-email/valid-token-123'
-      );
+      const res = await request(app).get('/api/v1/clientes/verificar-email/valid-token-123');
 
       expect(res.status).toBe(200);
-  });
+    });
   });
 
   // ─────────────────────────────────────────────

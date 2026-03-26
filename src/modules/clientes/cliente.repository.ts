@@ -1,4 +1,4 @@
-import { prisma } from "../../config/prisma";
+import { prisma } from '../../config/prisma';
 
 export class ClienteRepository {
   /**
@@ -117,11 +117,7 @@ export class ClienteRepository {
   /**
    * Guardar token de verificación
    */
-  async guardarTokenVerificacion(
-    id: number,
-    tokenVerif: string,
-    vencimiento: Date
-  ) {
+  async guardarTokenVerificacion(id: number, tokenVerif: string, vencimiento: Date) {
     return prisma.clienteTienda.update({
       where: { id },
       data: {
@@ -149,7 +145,7 @@ export class ClienteRepository {
         emailVerificado: true,
         creadoEn: true,
       },
-      orderBy: { creadoEn: "desc" },
+      orderBy: { creadoEn: 'desc' },
     });
   }
 

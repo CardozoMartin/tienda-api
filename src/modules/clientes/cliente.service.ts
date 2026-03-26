@@ -1,17 +1,17 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import crypto from "crypto";
-import { prisma } from "../../config/prisma";
-import { ClienteRepository } from "./cliente.repository";
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+import { prisma } from '../../config/prisma';
+import { ErrorApi } from '../../types';
+import { enviarEmailVerificacion } from '../../utils/emails';
 import {
-  RegistroClienteInput,
-  LoginClienteInput,
   ActualizarClienteInput,
   CambiarPasswordClienteInput,
+  LoginClienteInput,
   LoginResponse,
-} from "./cliente.dto";
-import { ErrorApi } from "../../types";
-import { enviarEmailVerificacion } from "../../utils/emails";
+  RegistroClienteInput,
+} from './cliente.dto';
+import { ClienteRepository } from './cliente.repository';
 
 export class ClienteService {
   private repo: ClienteRepository;
@@ -25,20 +25,17 @@ export class ClienteService {
    */
   async registro(input: RegistroClienteInput) {
     // Verificar si email ya existe en esta tienda
-    const clienteExistente = await this.repo.buscarPorEmailEnTienda(
-      input.email,
-      input.tiendaId
-    );
+    const clienteExistente = await this.repo.buscarPorEmailEnTienda(input.email, input.tiendaId);
 
     if (clienteExistente) {
-      throw new ErrorApi("Este email ya está registrado en esta tienda", 409);
+      throw new ErrorApi('Este email ya está registrado en esta tienda', 409);
     }
 
     // Hashear password
     const passwordHash = await bcrypt.hash(input.password, 12);
 
     // Generar token de verificación
-    const tokenVerif = crypto.randomBytes(32).toString("hex");
+    const tokenVerif = crypto.randomBytes(32).toString('hex');
     const tokenVerifVenc = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
 
     // Crear cliente
@@ -54,8 +51,8 @@ export class ClienteService {
     });
 
     // Enviar email de verificación (sin await para no bloquear)
-    enviarEmailVerificacion(input.email, input.nombre, tokenVerif).catch(
-      (err: Error) => console.error("Error enviando email verificación:", err)
+    enviarEmailVerificacion(input.email, input.nombre, tokenVerif).catch((err: Error) =>
+      console.error('Error enviando email verificación:', err)
     );
 
     return {
@@ -63,7 +60,7 @@ export class ClienteService {
       email: cliente.email,
       nombre: cliente.nombre,
       apellido: cliente.apellido,
-      mensaje: "Registro exitoso. Por favor verifica tu email.",
+      mensaje: 'Registro exitoso. Por favor verifica tu email.',
     };
   }
 
@@ -72,28 +69,22 @@ export class ClienteService {
    */
   async login(input: LoginClienteInput): Promise<LoginResponse> {
     // Buscar cliente
-    const cliente = await this.repo.buscarPorEmailEnTienda(
-      input.email,
-      input.tiendaId
-    );
+    const cliente = await this.repo.buscarPorEmailEnTienda(input.email, input.tiendaId);
 
     if (!cliente) {
-      throw new ErrorApi("Email o contraseña incorrectos", 401);
+      throw new ErrorApi('Email o contraseña incorrectos', 401);
     }
 
     // Verificar que cliente está activo
     if (!cliente.activo) {
-      throw new ErrorApi("Esta cuenta ha sido desactivada", 403);
+      throw new ErrorApi('Esta cuenta ha sido desactivada', 403);
     }
 
     // Comparar contraseña
-    const passwordValida = await bcrypt.compare(
-      input.password,
-      cliente.passwordHash
-    );
+    const passwordValida = await bcrypt.compare(input.password, cliente.passwordHash);
 
     if (!passwordValida) {
-      throw new ErrorApi("Email o contraseña incorrectos", 401);
+      throw new ErrorApi('Email o contraseña incorrectos', 401);
     }
 
     // Generar JWT
@@ -102,10 +93,10 @@ export class ClienteService {
         id: cliente.id,
         email: cliente.email,
         tiendaId: cliente.tiendaId,
-        tipo: "cliente",
+        tipo: 'cliente',
       },
-      process.env.JWT_SECRET || "secret",
-      { expiresIn: "7d" }
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '7d' }
     );
 
     return {
@@ -132,17 +123,14 @@ export class ClienteService {
     });
 
     if (!cliente) {
-      throw new ErrorApi(
-        "Token inválido o expirado",
-        400
-      );
+      throw new ErrorApi('Token inválido o expirado', 400);
     }
 
     // Marcar como verificado
     await this.repo.verificarEmail(cliente.id);
 
     return {
-      mensaje: "Email verificado correctamente",
+      mensaje: 'Email verificado correctamente',
     };
   }
 
@@ -153,7 +141,7 @@ export class ClienteService {
     const cliente = await this.repo.buscarPorId(clienteId);
 
     if (!cliente) {
-      throw new ErrorApi("Cliente no encontrado", 404);
+      throw new ErrorApi('Cliente no encontrado', 404);
     }
 
     return cliente;
@@ -162,10 +150,7 @@ export class ClienteService {
   /**
    * ACTUALIZAR PERFIL: Modificar datos del cliente
    */
-  async actualizarPerfil(
-    clienteId: number,
-    input: ActualizarClienteInput
-  ) {
+  async actualizarPerfil(clienteId: number, input: ActualizarClienteInput) {
     const cliente = await this.repo.actualizar(clienteId, input);
 
     return {
@@ -174,22 +159,19 @@ export class ClienteService {
       nombre: cliente.nombre,
       apellido: cliente.apellido,
       telefono: cliente.telefono,
-      mensaje: "Perfil actualizado correctamente",
+      mensaje: 'Perfil actualizado correctamente',
     };
   }
 
   /**
    * CAMBIAR CONTRASEÑA
    */
-  async cambiarPassword(
-    clienteId: number,
-    input: CambiarPasswordClienteInput
-  ) {
+  async cambiarPassword(clienteId: number, input: CambiarPasswordClienteInput) {
     // Obtener cliente
     const cliente = await this.repo.buscarPorId(clienteId);
 
     if (!cliente) {
-      throw new ErrorApi("Cliente no encontrado", 404);
+      throw new ErrorApi('Cliente no encontrado', 404);
     }
 
     // Verificar contraseña actual (buscar con passwordHash)
@@ -204,7 +186,7 @@ export class ClienteService {
     );
 
     if (!passwordValida) {
-      throw new ErrorApi("Contraseña actual incorrecta", 401);
+      throw new ErrorApi('Contraseña actual incorrecta', 401);
     }
 
     // Hashear nueva contraseña
@@ -213,9 +195,7 @@ export class ClienteService {
     await this.repo.cambiarPassword(clienteId, nuevoHash);
 
     return {
-      mensaje: "Contraseña cambiada correctamente",
+      mensaje: 'Contraseña cambiada correctamente',
     };
   }
 }
-
-

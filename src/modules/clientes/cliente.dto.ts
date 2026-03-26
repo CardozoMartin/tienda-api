@@ -1,33 +1,22 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 // ─────────────────────────────────────────────
 // REGISTRO DE CLIENTE
 // ─────────────────────────────────────────────
 export const RegistroClienteSchema = z
   .object({
-    tiendaId: z.number().int().positive().describe("ID de la tienda"),
-    email: z
-      .string()
-      .min(1, "Email es requerido")
-      .email("Email inválido")
-      .toLowerCase()
-      .trim(),
-    nombre: z
-      .string()
-      .min(2, "Nombre debe tener mínimo 2 caracteres")
-      .max(100, "Nombre muy largo"),
+    tiendaId: z.number().int().positive().describe('ID de la tienda'),
+    email: z.string().min(1, 'Email es requerido').email('Email inválido').toLowerCase().trim(),
+    nombre: z.string().min(2, 'Nombre debe tener mínimo 2 caracteres').max(100, 'Nombre muy largo'),
     apellido: z
       .string()
-      .min(2, "Apellido debe tener mínimo 2 caracteres")
-      .max(100, "Apellido muy largo"),
-    telefono: z.string().min(8, "Teléfono inválido").max(30),
+      .min(2, 'Apellido debe tener mínimo 2 caracteres')
+      .max(100, 'Apellido muy largo'),
+    telefono: z.string().min(8, 'Teléfono inválido').max(30),
     password: z
       .string()
-      .min(8, "Contraseña mínimo 8 caracteres")
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Debe contener mayúscula, minúscula y número"
-      ),
+      .min(8, 'Contraseña mínimo 8 caracteres')
+      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Debe contener mayúscula, minúscula y número'),
   })
   .strict();
 
@@ -39,13 +28,8 @@ export type RegistroClienteInput = z.infer<typeof RegistroClienteSchema>;
 export const LoginClienteSchema = z
   .object({
     tiendaId: z.number().int().positive(),
-    email: z
-      .string()
-      .min(1, "Email es requerido")
-      .email("Email inválido")
-      .toLowerCase()
-      .trim(),
-    password: z.string().min(1, "Contraseña es requerida"),
+    email: z.string().min(1, 'Email es requerido').email('Email inválido').toLowerCase().trim(),
+    password: z.string().min(1, 'Contraseña es requerida'),
   })
   .strict();
 
@@ -69,24 +53,19 @@ export type ActualizarClienteInput = z.infer<typeof ActualizarClienteSchema>;
 // ─────────────────────────────────────────────
 export const CambiarPasswordClienteSchema = z
   .object({
-    passwordActual: z.string().min(1, "Contraseña actual requerida"),
+    passwordActual: z.string().min(1, 'Contraseña actual requerida'),
     passwordNueva: z
       .string()
-      .min(8, "Contraseña mínimo 8 caracteres")
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Debe contener mayúscula, minúscula y número"
-      ),
+      .min(8, 'Contraseña mínimo 8 caracteres')
+      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Debe contener mayúscula, minúscula y número'),
     passwordConfirmar: z.string(),
   })
   .refine((data) => data.passwordNueva === data.passwordConfirmar, {
-    message: "Las contraseñas no coinciden",
-    path: ["passwordConfirmar"],
+    message: 'Las contraseñas no coinciden',
+    path: ['passwordConfirmar'],
   });
 
-export type CambiarPasswordClienteInput = z.infer<
-  typeof CambiarPasswordClienteSchema
->;
+export type CambiarPasswordClienteInput = z.infer<typeof CambiarPasswordClienteSchema>;
 
 // ─────────────────────────────────────────────
 // RESPUESTA DE LOGIN

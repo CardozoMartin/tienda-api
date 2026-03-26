@@ -1,20 +1,20 @@
-import { Router } from "express";
-import { autenticar } from "../../middleware/auth.middleware";
-import { validar } from "../../middleware/validar.middleware";
+import { Router } from 'express';
+import { autenticar } from '../../middleware/auth.middleware';
+import { validar } from '../../middleware/validar.middleware';
 import {
-  registroCliente,
-  loginCliente,
-  verificarEmailCliente,
-  obtenerPerfilCliente,
   actualizarPerfilCliente,
   cambiarPasswordCliente,
-} from "./cliente.controller";
+  loginCliente,
+  obtenerPerfilCliente,
+  registroCliente,
+  verificarEmailCliente,
+} from './cliente.controller';
 import {
-  RegistroClienteSchema,
-  LoginClienteSchema,
   ActualizarClienteSchema,
   CambiarPasswordClienteSchema,
-} from "./cliente.dto";
+  LoginClienteSchema,
+  RegistroClienteSchema,
+} from './cliente.dto';
 
 const router = Router();
 
@@ -26,30 +26,19 @@ const router = Router();
  * POST /api/v1/clientes/registro
  * Registrar nuevo cliente
  */
-router.post(
-  "/registro",
-  validar(RegistroClienteSchema),
-  registroCliente
-);
+router.post('/registro', validar(RegistroClienteSchema), registroCliente);
 
 /**
  * POST /api/v1/clientes/login
  * Autenticar cliente
  */
-router.post(
-  "/login",
-  validar(LoginClienteSchema),
-  loginCliente
-);
+router.post('/login', validar(LoginClienteSchema), loginCliente);
 
 /**
  * GET /api/v1/clientes/verificar-email/:token
  * Verificar email con token
  */
-router.get(
-  "/verificar-email/:token",
-  verificarEmailCliente
-);
+router.get('/verificar-email/:token', verificarEmailCliente);
 
 // ─────────────────────────────────────────────
 // RUTAS PROTEGIDAS (requieren autenticación)
@@ -59,29 +48,20 @@ router.get(
  * GET /api/v1/clientes/perfil
  * Obtener perfil del cliente autenticado
  */
-router.get(
-  "/perfil",
-  autenticar,
-  obtenerPerfilCliente
-);
+router.get('/perfil', autenticar, obtenerPerfilCliente);
 
 /**
  * PUT /api/v1/clientes/perfil
  * Actualizar perfil del cliente
  */
-router.put(
-  "/perfil",
-  autenticar,
-  validar(ActualizarClienteSchema),
-  actualizarPerfilCliente
-);
+router.put('/perfil', autenticar, validar(ActualizarClienteSchema), actualizarPerfilCliente);
 
 /**
  * POST /api/v1/clientes/cambiar-password
  * Cambiar contraseña
  */
 router.post(
-  "/cambiar-password",
+  '/cambiar-password',
   autenticar,
   validar(CambiarPasswordClienteSchema),
   cambiarPasswordCliente

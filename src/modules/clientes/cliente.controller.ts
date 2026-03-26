@@ -1,6 +1,6 @@
-import { Request, Response } from "express";
-import { ClienteService } from "./cliente.service";
-import { responderOk } from "../../utils/helpers";
+import { Request, Response } from 'express';
+import { responderOk } from '../../utils/helpers';
+import { ClienteService } from './cliente.service';
 
 const clienteService = new ClienteService();
 
@@ -10,7 +10,7 @@ const clienteService = new ClienteService();
  */
 export async function registroCliente(req: Request, res: Response) {
   const resultado = await clienteService.registro(req.body);
-  responderOk(res, resultado, "Cliente registrado correctamente", 201);
+  responderOk(res, resultado, 'Cliente registrado correctamente', 201);
 }
 
 /**
@@ -19,7 +19,7 @@ export async function registroCliente(req: Request, res: Response) {
  */
 export async function loginCliente(req: Request, res: Response) {
   const resultado = await clienteService.login(req.body);
-  responderOk(res, resultado, "Login exitoso", 200);
+  responderOk(res, resultado, 'Login exitoso', 200);
 }
 
 /**
@@ -29,7 +29,7 @@ export async function loginCliente(req: Request, res: Response) {
 export async function verificarEmailCliente(req: Request, res: Response) {
   const token = Array.isArray(req.params.token) ? req.params.token[0] : req.params.token;
   const resultado = await clienteService.verificarEmail(token);
-  responderOk(res, resultado, "Email verificado", 200);
+  responderOk(res, resultado, 'Email verificado', 200);
 }
 
 /**
@@ -39,7 +39,7 @@ export async function verificarEmailCliente(req: Request, res: Response) {
 export async function obtenerPerfilCliente(req: Request, res: Response) {
   const clienteId = (req as any).usuario?.id;
   const resultado = await clienteService.obtenerPerfil(clienteId);
-  responderOk(res, resultado, "Perfil obtenido", 200);
+  responderOk(res, resultado, 'Perfil obtenido', 200);
 }
 
 /**
@@ -49,7 +49,7 @@ export async function obtenerPerfilCliente(req: Request, res: Response) {
 export async function actualizarPerfilCliente(req: Request, res: Response) {
   const clienteId = (req as any).usuario?.id;
   const resultado = await clienteService.actualizarPerfil(clienteId, req.body);
-  responderOk(res, resultado, "Perfil actualizado", 200);
+  responderOk(res, resultado, 'Perfil actualizado', 200);
 }
 
 /**
@@ -59,5 +59,5 @@ export async function actualizarPerfilCliente(req: Request, res: Response) {
 export async function cambiarPasswordCliente(req: Request, res: Response) {
   const clienteId = (req as any).usuario?.id;
   const resultado = await clienteService.cambiarPassword(clienteId, req.body);
-  responderOk(res, resultado, "Contraseña cambiada", 200);
+  responderOk(res, resultado, 'Contraseña cambiada', 200);
 }

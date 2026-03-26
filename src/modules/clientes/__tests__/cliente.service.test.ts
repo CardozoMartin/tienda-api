@@ -1,6 +1,6 @@
-import { ClienteService } from '../cliente.service';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { ClienteService } from '../cliente.service';
 
 // Mock de emails
 jest.mock('../../../utils/emails', () => ({
@@ -266,9 +266,7 @@ describe('ClienteService', () => {
       prismaMock.clienteTienda.findFirst.mockResolvedValue(null);
 
       // EXECUTE & VALIDATE
-      await expect(service.verificarEmail(token)).rejects.toThrow(
-        'Token inválido o expirado'
-      );
+      await expect(service.verificarEmail(token)).rejects.toThrow('Token inválido o expirado');
     });
   });
 
