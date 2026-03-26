@@ -108,6 +108,7 @@ model Tienda {
   productos      Producto[]
   carrusel       CarruselImagen[]
   resenas        ResenaTienda[]
+  clientes     ClienteTienda[]
 
   @@index([usuarioId])
   @@index([plantillaId])
@@ -399,4 +400,59 @@ model LogBusqueda {
   @@index([usuarioId])
   @@index([tiendaId])
   @@map("log_busquedas")
+}
+
+// ─────────────────────────────────────────────
+// CLIENTE POR TIENDA
+// ─────────────────────────────────────────────
+
+model ClienteTienda {
+  id               Int       @id @default(autoincrement())
+  tiendaId         Int
+  email            String    @db.VarChar(180)
+  nombre           String    @db.VarChar(100)
+  apellido         String    @db.VarChar(100)
+  telefono         String    @db.VarChar(30)
+  passwordHash     String    @db.VarChar(255)
+  emailVerificado  Boolean   @default(false)
+  tokenVerif       String?   @db.VarChar(100)
+  tokenVerifVenc   DateTime?
+  activo           Boolean   @default(true)
+  creadoEn         DateTime  @default(now())
+  actualizadoEn    DateTime  @updatedAt
+
+  tienda           Tienda           @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  direcciones      DireccionCliente[]
+  // pedidos          Pedido[]         // lo usás cuando implementes pedidos
+
+  // La clave: mismo email puede existir en distintas tiendas
+  @@unique([tiendaId, email])
+  @@index([tiendaId])
+  @@map("clientes_tienda")
+}
+
+// ─────────────────────────────────────────────
+// DIRECCIÓN DEL CLIENTE
+// ─────────────────────────────────────────────
+// Separada porque un cliente puede tener varias
+// (casa, trabajo, etc.) y también la usás en el pedido
+
+model DireccionCliente {
+  id           Int           @id @default(autoincrement())
+  clienteId    Int
+  alias        String?       @db.VarChar(50)   // "Casa", "Trabajo"
+  calle        String        @db.VarChar(150)
+  numero       String?       @db.VarChar(20)
+  piso         String?       @db.VarChar(20)
+  ciudad       String        @db.VarChar(80)
+  provincia    String        @db.VarChar(80)
+  codigoPostal String?       @db.VarChar(20)
+  indicaciones String?       @db.VarChar(300)  // "timbre roto, llamar por cel"
+  esPrincipal  Boolean       @default(false)
+  creadoEn     DateTime      @default(now())
+
+  cliente      ClienteTienda @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+  @@map("direcciones_cliente")
 }
