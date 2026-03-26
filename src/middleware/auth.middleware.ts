@@ -51,6 +51,38 @@ export function autenticar(
 }
 
 /**
+ * Verifica si el request tiene un JWT válido en el header Authorization.
+ * Si es válido, adjunta el payload decodificado en req.usuario.
+ * A diferencia de autenticar, no lanza error si no hay token o es inválido,
+ * permitiendo usuarios invitados.
+ */
+export function autenticarOpcional(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void {
+  try {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader?.startsWith("Bearer ")) {
+      return next();
+    }
+
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return next();
+    }
+
+    const payload = jwt.verify(token, env.JWT_SECRET) as unknown as JwtPayload;
+    (req as RequestAutenticado).usuario = payload;
+
+    next();
+  } catch (error) {
+    // Silently ignore auth errors for optional endpoints
+    next();
+  }
+}
+
+/**
  * Fábrica de middleware de autorización por rol.
  * Verifica que el usuario autenticado tenga al menos uno de los roles permitidos.
  *

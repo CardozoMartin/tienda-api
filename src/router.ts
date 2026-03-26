@@ -8,6 +8,7 @@ import clientesRouter from './modules/clientes/cliente.routes';
 import { misProductosRouter, productosPublicosRouter } from './modules/productos/productos.routes';
 import { resenasProductoRouter, resenasTiendaRouter } from './modules/resenas/resenas.module';
 import tiendasRouter from './modules/tiendas/tiendas.routes';
+import carritoRouter from './modules/carrito/carrito.routes';
 
 const router = Router();
 
@@ -19,5 +20,6 @@ router.use('/mis-productos', misProductosRouter);
 router.use('/tiendas/:tiendaId/resenas', resenasTiendaRouter);
 router.use('/mis-productos/:productoId/resenas', resenasProductoRouter);
 router.use('/admin', adminRouter);
+router.use('/carrito', carritoRouter);
 
 export default router;
