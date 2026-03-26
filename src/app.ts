@@ -26,10 +26,10 @@ export function crearApp(): Application {
   // CORS: solo permitimos el origen configurado en .env
   app.use(
     cors({
-      origin: env.CORS_ORIGIN,
-      credentials: true,              // Permite cookies y headers de auth
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
+      origin: [env.CORS_ORIGIN, 'http://localhost:5174'],
+      credentials: true, // Permite cookies y headers de auth
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
     })
   );
 
