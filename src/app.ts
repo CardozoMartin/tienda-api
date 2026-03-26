@@ -1,13 +1,12 @@
 // Configuración de la aplicación Express.
 // Separamos la app del server.ts para facilitar el testing.
-import express, { Application } from "express";
-import cors from "cors";
-import helmet from "helmet";
-import morgan from "morgan";
-import rateLimit from "express-rate-limit";
-import { env } from "./config/env";
-import router from "./router";
-import { manejadorErrores, noEncontrado } from "./middleware/errores.middleware";
+import cors from 'cors';
+import express, { Application } from 'express';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import { env } from './config/env';
+import { manejadorErrores, noEncontrado } from './middleware/errores.middleware';
+import router from './router';
 
 /**
  * Crea y configura la aplicación Express con todos sus middlewares.
@@ -52,13 +51,13 @@ export function crearApp(): Application {
   // ─────────────────────────────────────────────
 
   // Parseamos JSON con límite de 10mb para permitir imágenes en base64 si fuera necesario
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // Morgan: logging de requests HTTP
   // En desarrollo: formato colorido con detalles
   // En producción: formato 'combined' estándar para herramientas de análisis
-  app.use(morgan(env.esDevelopment ? "dev" : "combined"));
+  app.use(morgan(env.esDevelopment ? 'dev' : 'combined'));
 
   // ─────────────────────────────────────────────
   // HEALTH CHECK
@@ -66,10 +65,10 @@ export function crearApp(): Application {
   // Útil para load balancers y monitoreo.
   // ─────────────────────────────────────────────
 
-  app.get("/health", (_req, res) => {
+  app.get('/health', (_req, res) => {
     res.json({
       ok: true,
-      mensaje: "API funcionando",
+      mensaje: 'API funcionando',
       entorno: env.NODE_ENV,
       timestamp: new Date().toISOString(),
     });

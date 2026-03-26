@@ -9,11 +9,7 @@ interface OpcionesEmail {
   html: string;
 }
 
-/**
- * Envía un email genérico.
- * @param opciones - Destinatario, asunto y contenido HTML
- * @returns true si fue exitoso, false si falló
- */
+//emails para enviar al dueño de la tienda
 export async function enviarEmail(opciones: OpcionesEmail): Promise<boolean> {
   try {
     const info = await transporter.sendMail({
@@ -43,14 +39,6 @@ export async function enviarEmail(opciones: OpcionesEmail): Promise<boolean> {
     return false;
   }
 }
-
-/**
- * Envía un email de verificación de cuenta.
- * @param email - Email del usuario
- * @param nombre - Nombre del usuario
- * @param tokenVerificacion - Token para verificar el email
- * @returns true si fue exitoso
- */
 export async function enviarEmailVerificacion(
   email: string,
   nombre: string,
@@ -101,14 +89,6 @@ export async function enviarEmailVerificacion(
     html,
   });
 }
-
-/**
- * Envía un email de reset de contraseña.
- * @param email - Email del usuario
- * @param nombre - Nombre del usuario
- * @param tokenReset - Token para resetear la contraseña
- * @returns true si fue exitoso
- */
 export async function enviarEmailResetPassword(
   email: string,
   nombre: string,
@@ -156,6 +136,60 @@ export async function enviarEmailResetPassword(
   return enviarEmail({
     para: email,
     asunto: 'Restablecer tu contraseña',
+    html,
+  });
+}
+
+//emails para enviar al cliente
+
+export async function enviarEmailVerificacionAlCliente(
+  email: string,
+  nombre: string,
+  tokenVerificacion: string,
+  nombreTienda: string
+): Promise<boolean> {
+  const urlVerificacion = `http://localhost:3000${env.API_PREFIX}/clientes/verificar-email/${tokenVerificacion}`;
+
+  const html = `
+    <html dir="ltr">
+      <body style="font-family: Arial, sans-serif; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2>Bienvenido a ${nombreTienda}, ${nombre}!</h2>
+
+          <p>Para completar tu registro, necesitás verificar tu email.</p>
+
+          <p>Haz clic en el siguiente botón para verificar tu cuenta:</p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${urlVerificacion}"
+               style="background-color: #4CAF50; color: white; padding: 12px 30px;
+                      text-decoration: none; border-radius: 5px; font-weight: bold;">
+              Verificar Email
+            </a>
+          </div>
+
+          <p>O copiar este enlace en tu navegador:</p>
+          <p style="word-break: break-all; color: #666;">
+            <code>${urlVerificacion}</code>
+          </p>
+
+          <p style="color: #999; font-size: 12px;">
+            Este enlace expira en 24 horas.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+
+          <p style="color: #999; font-size: 12px;">
+            Si no creaste esta cuenta, ignorá este email.
+          </p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  return enviarEmail({
+    para: email,
+    asunto: 'Verificá tu email para completar tu registro',
     html,
   });
 }
