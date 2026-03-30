@@ -64,7 +64,7 @@ export class CarritoService {
 
     // 3. Validar variante si fue seleccionada
     if (varianteId) {
-      const variante = producto.variantes.find((v) => v.id === varianteId);
+      const variante = producto.variantes.find((v: any) => v.id === varianteId);
       if (!variante) throw new ErrorApi("Variante no encontrada", 404);
       if (!variante.disponible) throw new ErrorApi("Variante no disponible", 400);
     }
@@ -73,7 +73,7 @@ export class CarritoService {
     //    no cambie si el owner modifica el precio antes de confirmar
     const precioBase = producto.precioOferta ?? producto.precio;
     const precioExtra = varianteId
-      ? (producto.variantes.find((v) => v.id === varianteId)?.precioExtra ?? new Decimal(0))
+      ? (producto.variantes.find((v: any) => v.id === varianteId)?.precioExtra ?? new Decimal(0))
       : new Decimal(0);
     const precioUnit = new Decimal(precioBase).add(precioExtra);
 
@@ -121,7 +121,7 @@ export class CarritoService {
     if (!carrito) throw new ErrorApi("Carrito no encontrado", 404);
 
     // Verificar que el item pertenece a este carrito
-    const itemValido = carrito.items.some((i) => i.id === itemId);
+    const itemValido = carrito.items.some((i: any) => i.id === itemId);
     if (!itemValido) throw new ErrorApi("Item no encontrado en el carrito", 404);
 
     await this.repository.actualizarCantidad(itemId, cantidad);
@@ -137,7 +137,7 @@ export class CarritoService {
     const carrito = await this.repository.obtenerCarrito(tiendaId, sessionId);
     if (!carrito) throw new ErrorApi("Carrito no encontrado", 404);
 
-    const itemValido = carrito.items.some((i) => i.id === itemId);
+    const itemValido = carrito.items.some((i: any) => i.id === itemId);
     if (!itemValido) throw new ErrorApi("Item no encontrado en el carrito", 404);
 
     await this.repository.eliminarItem(itemId);
@@ -174,17 +174,17 @@ export class CarritoService {
   // ── HELPER PRIVADO ──────────────────────────────────────────
   // Formatea el carrito calculando totales para devolver al frontend
   private formatearCarrito(carrito: NonNullable<Awaited<ReturnType<CarritoRepository["obtenerCarrito"]>>>) {
-    const total = carrito.items.reduce((acc, item) => {
+    const total = carrito.items.reduce((acc: any, item: any) => {
       return acc.add(new Decimal(item.precioUnit).mul(item.cantidad));
     }, new Decimal(0));
 
-    const cantidad = carrito.items.reduce((acc, item) => acc + item.cantidad, 0);
+    const cantidad = carrito.items.reduce((acc: number, item: any) => acc + item.cantidad, 0);
 
     return {
       id: carrito.id,
       sessionId: carrito.sessionId,
       clienteId: carrito.clienteId,
-      items: carrito.items.map((item) => ({
+      items: carrito.items.map((item: any) => ({
         id: item.id,
         cantidad: item.cantidad,
         precioUnit: item.precioUnit,
