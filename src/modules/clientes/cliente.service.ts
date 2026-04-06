@@ -3,13 +3,15 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../../config/prisma';
 import { ErrorApi } from '../../types';
-import { enviarEmailVerificacionAlCliente } from '../../utils/emails';
+import { enviarEmailVerificacionAlCliente, enviarEmailResetPassword } from '../../utils/emails';
 import {
   ActualizarClienteInput,
   CambiarPasswordClienteInput,
   LoginClienteInput,
   LoginResponse,
   RegistroClienteInput,
+  SolicitarResetPasswordClienteInput,
+  ConfirmarResetPasswordClienteInput,
 } from './cliente.dto';
 import { ClienteRepository } from './cliente.repository';
 import { TiendasRepository } from '../tiendas/tiendas.repository';
@@ -121,13 +123,7 @@ export class ClienteService {
    * VERIFICAR EMAIL: Confirmar email del cliente
    */
   async verificarEmail(tokenVerif: string) {
-    // Buscar cliente por token
-    const cliente = await prisma.clienteTienda.findFirst({
-      where: {
-        tokenVerif,
-        tokenVerifVenc: { gt: new Date() }, // Token no vencido
-      },
-    });
+    const cliente = await this.repo.buscarPorTokenVerificacion(tokenVerif);
 
     if (!cliente) {
       throw new ErrorApi('Token inválido o expirado', 400);
@@ -139,6 +135,54 @@ export class ClienteService {
     return {
       mensaje: 'Email verificado correctamente',
     };
+  }
+
+  /**
+   * SOLICITAR RESET PASSWORD
+   */
+  async solicitarResetPassword(input: SolicitarResetPasswordClienteInput) {
+    const cliente = await this.repo.buscarPorEmailEnTienda(input.email, input.tiendaId);
+
+    // Mensaje genérico por seguridad
+    const mensajeOk = 'Si existe una cuenta registrada con ese email, recibirás las instrucciones en breve.';
+
+    if (!cliente || !cliente.activo) {
+      return { mensaje: mensajeOk };
+    }
+
+    // Generar token
+    const token = crypto.randomBytes(32).toString('hex');
+    const vencimiento = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+    await this.repo.guardarTokenReset(cliente.id, token, vencimiento);
+
+    // Enviar email
+    const tienda = await this.tiendarepo.buscarPorId(input.tiendaId);
+    await enviarEmailResetPassword(cliente.email, cliente.nombre, token, tienda.nombre);
+
+    return { mensaje: mensajeOk };
+  }
+
+  /**
+   * CONFIRMAR RESET PASSWORD
+   */
+  async confirmarResetPassword(input: ConfirmarResetPasswordClienteInput) {
+    const cliente = await this.repo.buscarPorTokenReset(input.token);
+
+    if (!cliente) {
+      throw new ErrorApi('Token inválido o expirado', 400);
+    }
+
+    const passwordHash = await bcrypt.hash(input.passwordNueva, 12);
+    await this.repo.cambiarPassword(cliente.id, passwordHash);
+
+    // Limpiar token de reset tras uso exitoso
+    await prisma.clienteTienda.update({
+      where: { id: cliente.id },
+      data: { tokenResetPass: null, tokenVencReset: null },
+    });
+
+    return { mensaje: 'Tu contraseña ha sido restablecida con éxito.' };
   }
 
   /**

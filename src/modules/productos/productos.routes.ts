@@ -121,3 +121,9 @@ misProductosRouter.delete(
   ...soloOwner,
   controller.eliminarVariante
 );
+misProductosRouter.post(
+  '/:productoId/variantes/:varianteId/imagen',
+  ...soloOwner,
+  uploadSingle,
+  controller.subirImagenVariante
+);

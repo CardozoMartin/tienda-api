@@ -14,11 +14,14 @@ export interface CrearPedidoDto {
   direccionNotas?: string;
   metodoPagoId: number;
   notasCliente?: string;
+  costoEnvio?: number;
 }
 
 export interface ActualizarEstadoPedidoDto {
   estado: EstadoPedido;
   notasOwner?: string;
+  nroSeguimiento?: string;
+  urlSeguimiento?: string;
 }
 
 export interface FiltrosPedidosDto {

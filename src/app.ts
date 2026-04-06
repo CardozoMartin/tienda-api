@@ -3,6 +3,7 @@
 import cors from 'cors';
 import express, { Application } from 'express';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import { env } from './config/env';
 import { manejadorErrores, noEncontrado } from './middleware/errores.middleware';
@@ -44,7 +45,7 @@ export function crearApp(): Application {
   //   legacyHeaders: false,     // Desactiva X-RateLimit-* deprecated
   // });
 
-  // app.use(limiter);
+      // app.use(limiter);
 
   // ─────────────────────────────────────────────
   // PARSING Y LOGGING

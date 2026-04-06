@@ -36,7 +36,14 @@ export class PedidosController {
   obtenerPorId = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params as { id: string };
+      const usuario = (req as any).usuario;
       const pedido = await this.service.obtenerPorId(parseInt(id, 10));
+
+      // Si es un cliente, solo puede ver SU pedido
+      if (usuario.rol === 'CLIENT' && pedido.clienteId !== usuario.sub) {
+        throw new Error('No tienes permiso para ver este pedido');
+      }
+
       responderOk(res, pedido, 'Pedido obtenido exitosamente');
     } catch (error) {
       next(error);
@@ -45,7 +52,14 @@ export class PedidosController {
 
   listar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      const usuario = (req as any).usuario;
       const filtros = req.query as unknown as FiltrosPedidosDto;
+
+      // Si el usuario es un CLIENTE, forzamos el filtro por su clienteId
+      if (usuario.rol === 'CLIENT') {
+        filtros.clienteId = usuario.sub;
+      }
+
       const resultado = await this.service.listar(filtros);
       
       const { datos, total } = resultado;
@@ -68,7 +82,12 @@ export class PedidosController {
   actualizarEstado = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params as { id: string };
-      const pedido = await this.service.actualizarEstado(parseInt(id, 10), req.body as ActualizarEstadoPedidoDto);
+      const usuario = (req as any).usuario;
+      const pedido = await this.service.actualizarEstado(
+        parseInt(id, 10), 
+        req.body as ActualizarEstadoPedidoDto,
+        usuario?.sub // id del admin/owner que cambia el estado
+      );
       responderOk(res, pedido, 'Estado del pedido actualizado exitosamente');
     } catch (error) {
       next(error);

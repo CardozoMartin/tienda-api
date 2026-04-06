@@ -8,12 +8,16 @@ import {
   obtenerPerfilCliente,
   registroCliente,
   verificarEmailCliente,
+  solicitarResetPasswordCliente,
+  confirmarResetPasswordCliente,
 } from './cliente.controller';
 import {
   ActualizarClienteSchema,
   CambiarPasswordClienteSchema,
   LoginClienteSchema,
   RegistroClienteSchema,
+  SolicitarResetPasswordClienteSchema,
+  ConfirmarResetPasswordClienteSchema,
 } from './cliente.dto';
 
 const router = Router();
@@ -39,6 +43,18 @@ router.post('/login', validar(LoginClienteSchema), loginCliente);
  * Verificar email con token
  */
 router.get('/verificar-email/:token', verificarEmailCliente);
+
+/**
+ * POST /api/v1/clientes/olvide-password
+ * Solicitar reset de contraseña
+ */
+router.post('/olvide-password', validar(SolicitarResetPasswordClienteSchema), solicitarResetPasswordCliente);
+
+/**
+ * POST /api/v1/clientes/reset-password
+ * Confirmar reset de contraseña
+ */
+router.post('/reset-password', validar(ConfirmarResetPasswordClienteSchema), confirmarResetPasswordCliente);
 
 // ─────────────────────────────────────────────
 // RUTAS PROTEGIDAS (requieren autenticación)

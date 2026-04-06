@@ -85,3 +85,29 @@ export async function cambiarPasswordCliente(req: Request, res: Response, next: 
     next(error);
   }
 }
+
+/**
+ * POST /olvide-password
+ * Solicitar reset de contraseña
+ */
+export async function solicitarResetPasswordCliente(req: Request, res: Response, next: any) {
+  try {
+    const resultado = await clienteService.solicitarResetPassword(req.body);
+    responderOk(res, resultado, 'Instrucciones enviadas', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * POST /reset-password
+ * Confirmar reset de contraseña con token
+ */
+export async function confirmarResetPasswordCliente(req: Request, res: Response, next: any) {
+  try {
+    const resultado = await clienteService.confirmarResetPassword(req.body);
+    responderOk(res, resultado, 'Contraseña restablecida', 200);
+  } catch (error) {
+    next(error);
+  }
+}

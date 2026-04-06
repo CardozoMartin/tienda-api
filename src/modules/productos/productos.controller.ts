@@ -235,6 +235,22 @@ export class ProductosController {
     }
   };
 
+  subirImagenVariante = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const productoId = parseInt(req.params['productoId'] as string, 10);
+      const varianteId = parseInt(req.params['varianteId'] as string, 10);
+      const file = (req as any).file as Express.Multer.File | undefined;
+
+      if (!file) throw new Error('No se recibió ningún archivo');
+
+      const variante = await this.service.subirImagenVariante(usuarioId, productoId, varianteId, file);
+      responderOk(res, variante, 'Imagen de variante subida exitosamente');
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // ── Categorías (Para Owners) ──
 
   listarCategorias = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {

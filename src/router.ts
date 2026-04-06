@@ -10,6 +10,7 @@ import { resenasProductoRouter, resenasTiendaRouter } from './modules/resenas/re
 import tiendasRouter from './modules/tiendas/tiendas.routes';
 import carritoRouter from './modules/carrito/carrito.routes';
 import pedidosRouter from './modules/pedidos/pedidos.routes';
+import aiRouter from './modules/ai/ai.routes';
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use('/admin', adminRouter);
 router.use('/carrito', carritoRouter);
 router.use('/tiendas/:tiendaId/pedidos', pedidosRouter);
 router.use('/pedidos', pedidosRouter); // Para listar todos o por filtros desde el dashboard
+router.use('/ai', aiRouter);
 
 export default router;

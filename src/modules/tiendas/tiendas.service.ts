@@ -11,6 +11,8 @@ import {
   AgregarMetodoEntregaDto,
   AgregarImagenCarruselDto,
   FiltrosTiendasDto,
+  ActualizarAboutUsDto,
+  ActualizarMarqueeDto,
 } from "./tiendas.dto";
 import { uploadImageToCloudinary } from "@/utils/cloudinary";
 
@@ -225,15 +227,41 @@ export class TiendasService {
 
   // ── Métodos privados ──
 
-  /**
-   * Helper para obtener la tienda del usuario o lanzar error 404.
-   * Evita repetir la misma verificación en cada método.
-   */
   private async obtenerTiendaOFallar(usuarioId: number) {
     const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
     if (!tienda) {
       throw new ErrorApi("No tenés ninguna tienda creada", 404);
     }
     return tienda;
+  }
+
+  // ── About Us ──
+
+  async obtenerAboutUs(usuarioId: number) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    return this.repository.buscarAboutUs(tienda.id);
+  }
+
+  async actualizarAboutUs(usuarioId: number, datos: ActualizarAboutUsDto) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    return this.repository.actualizarAboutUs(tienda.id, datos);
+  }
+
+  async subirImagenAboutUs(usuarioId: number, file: Express.Multer.File) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const url = await uploadImageToCloudinary(file.buffer);
+    return this.repository.actualizarAboutUs(tienda.id, { imagenUrl: url });
+  }
+
+  // ── Marquee ──
+
+  async obtenerMarquee(usuarioId: number) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    return this.repository.listarMarquee(tienda.id);
+  }
+
+  async actualizarMarquee(usuarioId: number, datos: ActualizarMarqueeDto) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    return this.repository.actualizarMarquee(tienda.id, datos.items);
   }
 }

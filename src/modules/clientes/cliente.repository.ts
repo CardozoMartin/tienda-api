@@ -128,6 +128,43 @@ export class ClienteRepository {
   }
 
   /**
+   * Buscar cliente por token de verificación
+   */
+  async buscarPorTokenVerificacion(tokenVerif: string) {
+    return prisma.clienteTienda.findFirst({
+      where: {
+        tokenVerif,
+        tokenVerifVenc: { gt: new Date() },
+      },
+    });
+  }
+
+  /**
+   * Guardar token de reset de contraseña
+   */
+  async guardarTokenReset(id: number, tokenResetPass: string, vencimiento: Date) {
+    return prisma.clienteTienda.update({
+      where: { id },
+      data: {
+        tokenResetPass,
+        tokenVencReset: vencimiento,
+      },
+    });
+  }
+
+  /**
+   * Buscar cliente por token de reset
+   */
+  async buscarPorTokenReset(tokenResetPass: string) {
+    return prisma.clienteTienda.findFirst({
+      where: {
+        tokenResetPass,
+        tokenVencReset: { gt: new Date() },
+      },
+    });
+  }
+
+  /**
    * Listar clientes de una tienda
    */
   async listarPorTienda(tiendaId: number) {

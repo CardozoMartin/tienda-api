@@ -1,17 +1,22 @@
 // ═══════════════════════════════════════════════════
 // MÓDULO DE RESEÑAS COMPLETO
 // Maneja reseñas tanto de tiendas como de productos.
+// Solo clientes autenticados pueden crear reseñas.
+// Reseñas de producto admiten imagen opcional.
 // ═══════════════════════════════════════════════════
 
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { Router, Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/prisma";
-import { ErrorApi, RequestAutenticado } from "../../types";
+import { ErrorApi } from "../../types";
 import { autenticar, autorizar } from "../../middleware/auth.middleware";
+import { autenticarCliente, RequestConCliente } from "../../middleware/clientes.auth.middleware";
 import { validar } from "../../middleware/validar.middleware";
 import { RolUsuario } from "@prisma/client";
 import { responderOk, responderPaginado, calcularSkip, construirPaginacion } from "../../utils/helpers";
+import cloudinary from "../../config/cloudinary.config";
+import upload from "../../config/multer.config";
 
 // ─────────────────────────────────────────────
 // DTOs
@@ -24,8 +29,6 @@ export const CrearResenaSchema = z.object({
     .min(1, "La calificación mínima es 1")
     .max(5, "La calificación máxima es 5"),
   comentario: z.string().max(2000).trim().optional(),
-  // Nombre del autor para reseñas anónimas (cuando no hay sesión)
-  autorNombre: z.string().max(100).trim().optional(),
 });
 
 export type CrearResenaDto = z.infer<typeof CrearResenaSchema>;
@@ -60,7 +63,7 @@ class ResenasRepository {
 
   async crearResenaTienda(datos: {
     tiendaId: number;
-    usuarioId?: number;
+    clienteId?: number;
     autorNombre?: string;
     calificacion: number;
     comentario?: string;
@@ -96,14 +99,12 @@ class ResenasRepository {
   }
 
   async obtenerEstadisticasTienda(tiendaId: number) {
-    // Obtenemos el promedio y conteo de reseñas aprobadas en una sola query
     const resultado = await prisma.resenaTienda.aggregate({
       where: { tiendaId, aprobada: true, eliminada: false },
       _avg: { calificacion: true },
       _count: { calificacion: true },
     });
 
-    // Distribución por calificación (cuántas 1★, 2★, etc.)
     const distribucion = await prisma.resenaTienda.groupBy({
       by: ["calificacion"],
       where: { tiendaId, aprobada: true, eliminada: false },
@@ -142,7 +143,6 @@ class ResenasRepository {
     respuesta: string,
     tiendaId: number
   ): Promise<void> {
-    // Verificamos que la reseña pertenezca a la tienda antes de responder
     await prisma.resenaTienda.updateMany({
       where: { id: resenaId, tiendaId },
       data: { respuesta, respuestaEn: new Date() },
@@ -150,7 +150,6 @@ class ResenasRepository {
   }
 
   async eliminarResenaTienda(resenaId: number): Promise<void> {
-    // Soft delete: marcamos como eliminada, no borramos de la DB
     await prisma.resenaTienda.update({
       where: { id: resenaId },
       data: { eliminada: true },
@@ -162,7 +161,7 @@ class ResenasRepository {
       where: { tiendaId, aprobada: false, eliminada: false },
       orderBy: { creadoEn: "asc" },
       include: {
-        usuario: { select: { id: true, nombre: true, avatarUrl: true } },
+        cliente: { select: { id: true, nombre: true, email: true } },
       },
     });
   }
@@ -171,12 +170,20 @@ class ResenasRepository {
 
   async crearResenaProducto(datos: {
     productoId: number;
-    usuarioId?: number;
+    clienteId?: number;
     autorNombre?: string;
     calificacion: number;
     comentario?: string;
+    imagenUrl?: string;
   }) {
     return prisma.resenaProducto.create({ data: datos });
+  }
+
+  async actualizarImagenResenaProducto(resenaId: number, imagenUrl: string) {
+    return prisma.resenaProducto.update({
+      where: { id: resenaId },
+      data: { imagenUrl },
+    });
   }
 
   async listarResenasProducto(
@@ -197,7 +204,7 @@ class ResenasRepository {
         take: filtros.limite,
         orderBy: { [filtros.orden]: filtros.direccion },
         include: {
-          usuario: { select: { id: true, nombre: true, avatarUrl: true } },
+          cliente: { select: { id: true, nombre: true, email: true } },
         },
       }),
       prisma.resenaProducto.count({ where }),
@@ -265,7 +272,6 @@ class ResenasRepository {
   }
 
   async listarPendientesProductos(tiendaId: number) {
-    // Buscamos reseñas pendientes de todos los productos de la tienda
     return prisma.resenaProducto.findMany({
       where: {
         aprobada: false,
@@ -275,7 +281,7 @@ class ResenasRepository {
       orderBy: { creadoEn: "asc" },
       include: {
         producto: { select: { id: true, nombre: true } },
-        usuario: { select: { id: true, nombre: true, avatarUrl: true } },
+        cliente: { select: { id: true, nombre: true, email: true } },
       },
     });
   }
@@ -297,19 +303,13 @@ class ResenasService {
   async crearResenaTienda(
     tiendaId: number,
     datos: CrearResenaDto,
-    usuarioId?: number
+    clienteId: number,
+    autorNombre: string
   ) {
-    // Si no hay usuario autenticado, el autorNombre es requerido
-    if (!usuarioId && !datos.autorNombre) {
-      throw new ErrorApi(
-        "El nombre del autor es requerido para reseñas anónimas",
-        400
-      );
-    }
     return this.repository.crearResenaTienda({
       tiendaId,
-      usuarioId,
-      autorNombre: datos.autorNombre,
+      clienteId,
+      autorNombre,
       calificacion: datos.calificacion,
       comentario: datos.comentario,
     });
@@ -353,20 +353,35 @@ class ResenasService {
   async crearResenaProducto(
     productoId: number,
     datos: CrearResenaDto,
-    usuarioId?: number
+    clienteId: number,
+    autorNombre: string,
+    imagenBuffer?: Buffer,
+    imagenMimetype?: string
   ) {
-    if (!usuarioId && !datos.autorNombre) {
-      throw new ErrorApi(
-        "El nombre del autor es requerido para reseñas anónimas",
-        400
-      );
+    let imagenUrl: string | undefined;
+
+    // Si se envió imagen, la subimos a Cloudinary
+    if (imagenBuffer && imagenMimetype) {
+      const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "resenas-productos", resource_type: "image" },
+          (err, result) => {
+            if (err || !result) return reject(err ?? new Error("Upload failed"));
+            resolve(result as { secure_url: string });
+          }
+        );
+        stream.end(imagenBuffer);
+      });
+      imagenUrl = uploadResult.secure_url;
     }
+
     return this.repository.crearResenaProducto({
       productoId,
-      usuarioId,
-      autorNombre: datos.autorNombre,
+      clienteId,
+      autorNombre,
       calificacion: datos.calificacion,
       comentario: datos.comentario,
+      imagenUrl,
     });
   }
 
@@ -434,12 +449,18 @@ class ResenasController {
     } catch (e) { next(e); }
   };
 
-  crearTienda = async (req: Request, res: Response, next: NextFunction) => {
+  // Solo clientes autenticados pueden crear reseñas de tienda
+  crearTienda = async (req: RequestConCliente, res: Response, next: NextFunction) => {
     try {
       const tiendaId = parseInt(req.params["tiendaId"] as string, 10);
-      // El usuarioId es opcional (permite reseñas anónimas)
-      const usuarioId = (req as RequestAutenticado).usuario?.sub;
-      const resena = await this.service.crearResenaTienda(tiendaId, req.body as CrearResenaDto, usuarioId);
+      const cliente = req.clienteAuth!;
+      const autorNombre = `${req.body.autorNombre || "Cliente"}`;
+      const resena = await this.service.crearResenaTienda(
+        tiendaId,
+        req.body as CrearResenaDto,
+        cliente.id,
+        autorNombre
+      );
       responderOk(res, resena, "Reseña enviada. Será publicada una vez aprobada.", 201);
     } catch (e) { next(e); }
   };
@@ -504,11 +525,35 @@ class ResenasController {
     } catch (e) { next(e); }
   };
 
-  crearProducto = async (req: Request, res: Response, next: NextFunction) => {
+  // Solo clientes autenticados pueden crear reseñas de producto (con imagen opcional)
+  crearProducto = async (req: RequestConCliente, res: Response, next: NextFunction) => {
     try {
       const productoId = parseInt(req.params["productoId"] as string, 10);
-      const usuarioId = (req as RequestAutenticado).usuario?.sub;
-      const resena = await this.service.crearResenaProducto(productoId, req.body as CrearResenaDto, usuarioId);
+      const cliente = req.clienteAuth!;
+
+      // Parseamos calificacion del body (puede venir como string en multipart)
+      const calificacion = parseInt(req.body.calificacion as string, 10);
+      const comentario = req.body.comentario as string | undefined;
+
+      const dto: CrearResenaDto = { calificacion, comentario };
+
+      // Validamos manualmente el DTO
+      const parsed = CrearResenaSchema.safeParse(dto);
+      if (!parsed.success) {
+        throw new ErrorApi(parsed.error.errors.map(e => e.message).join(', '), 400);
+      }
+
+      const archivo = (req as any).file as Express.Multer.File | undefined;
+      const autorNombre = cliente.email.split('@')[0]; // Usamos parte del email como nombre
+
+      const resena = await this.service.crearResenaProducto(
+        productoId,
+        parsed.data,
+        cliente.id,
+        autorNombre,
+        archivo?.buffer,
+        archivo?.mimetype
+      );
       responderOk(res, resena, "Reseña enviada. Será publicada una vez aprobada.", 201);
     } catch (e) { next(e); }
   };
@@ -567,9 +612,11 @@ export const resenasTiendaRouter = Router({ mergeParams: true });
 
 resenasTiendaRouter.get("/", validar(FiltrosResenasSchema, "query"), controller.listarTienda);
 resenasTiendaRouter.get("/estadisticas", controller.estadisticasTienda);
-resenasTiendaRouter.post("/", validar(CrearResenaSchema), controller.crearTienda);
+// Solo clientes logueados pueden crear reseñas de tienda (solo texto)
+resenasTiendaRouter.post("/", autenticarCliente, validar(CrearResenaSchema), controller.crearTienda as any);
 // Panel owner
 resenasTiendaRouter.get("/pendientes", ...soloOwner, controller.pendientesTienda);
+resenasTiendaRouter.get("/productos/pendientes", ...soloOwner, controller.pendientesProductos);
 resenasTiendaRouter.patch("/:resenaId/aprobar", ...soloOwner, controller.aprobarTienda);
 resenasTiendaRouter.patch("/:resenaId/rechazar", ...soloOwner, controller.rechazarTienda);
 resenasTiendaRouter.post("/:resenaId/responder", ...soloOwner, validar(ResponderResenaSchema), controller.responderTienda);
@@ -580,7 +627,8 @@ export const resenasProductoRouter = Router({ mergeParams: true });
 
 resenasProductoRouter.get("/", validar(FiltrosResenasSchema, "query"), controller.listarProducto);
 resenasProductoRouter.get("/estadisticas", controller.estadisticasProducto);
-resenasProductoRouter.post("/", validar(CrearResenaSchema), controller.crearProducto);
+// Solo clientes logueados, acepta imagen (multipart/form-data)
+resenasProductoRouter.post("/", autenticarCliente, upload.single("imagen"), controller.crearProducto as any);
 // Panel owner
 resenasProductoRouter.get("/pendientes/:tiendaId", ...soloOwner, controller.pendientesProductos);
 resenasProductoRouter.patch("/:resenaId/aprobar", ...soloOwner, controller.aprobarProducto);

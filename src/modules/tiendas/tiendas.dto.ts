@@ -123,3 +123,31 @@ export const FiltrosTiendasSchema = z.object({
 });
 
 export type FiltrosTiendasDto = z.infer<typeof FiltrosTiendasSchema>;
+
+// ─────────────────────────────────────────────
+// ABOUT US
+// ─────────────────────────────────────────────
+
+export const ActualizarAboutUsSchema = z.object({
+  titulo: z.string().max(200).trim().optional(),
+  descripcion: z.string().max(5000).trim().optional(),
+  direccion: z.string().max(300).trim().optional(),
+  imagenUrl: z.string().url().max(500).optional(),
+});
+
+export type ActualizarAboutUsDto = z.infer<typeof ActualizarAboutUsSchema>;
+
+// ─────────────────────────────────────────────
+// MARQUEE
+// ─────────────────────────────────────────────
+
+export const MarqueeItemSchema = z.object({
+  texto: z.string().min(1).max(100).trim(),
+  orden: z.number().int().min(0).default(0),
+});
+
+export const ActualizarMarqueeSchema = z.object({
+  items: z.array(MarqueeItemSchema),
+});
+
+export type ActualizarMarqueeDto = z.infer<typeof ActualizarMarqueeSchema>;

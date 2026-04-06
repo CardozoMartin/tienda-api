@@ -45,7 +45,12 @@ export class ProductosRepository {
       // Filtro de disponible solo aplica para el owner (soloPublicos = false)
       ...(filtros.disponible !== undefined && !soloPublicos && { disponible: filtros.disponible }),
       ...(filtros.destacado !== undefined && { destacado: filtros.destacado }),
-      ...(filtros.categoriaId && { categoriaId: filtros.categoriaId }),
+      ...(filtros.categoriaId && {
+        OR: [
+          { categoriaId: filtros.categoriaId },
+          { categoria: { padreId: filtros.categoriaId } },
+        ],
+      }),
       // Búsqueda por nombre o descripción
       ...(filtros.busqueda && {
         OR: [
@@ -68,6 +73,8 @@ export class ProductosRepository {
           some: { nombre: { in: filtros.tags.split(',').map((t) => t.trim()) } },
         },
       }),
+      // Filtro para productos con stock bajo (<= 5)
+      ...(filtros.bajoStock === true && { stock: { lte: 5 } }),
     };
 
     const [datos, total] = await prisma.$transaction([
@@ -102,8 +109,10 @@ export class ProductosRepository {
       sku?: string;
       precioExtra: number;
       imagenUrl?: string;
+      stock: number;
       disponible: boolean;
     }>;
+    stock: number;
   }) {
     const { tags, variantes, ...datosPrincipales } = datos;
 
@@ -182,6 +191,7 @@ export class ProductosRepository {
       sku?: string;
       precioExtra: number;
       imagenUrl?: string;
+      stock: number;
       disponible: boolean;
     }
   ) {

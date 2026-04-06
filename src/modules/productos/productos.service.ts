@@ -98,6 +98,7 @@ export class ProductosService {
       categoriaId: (datos.categoriaId as any) === '' ? undefined : datos.categoriaId,
       disponible: datos.disponible,
       destacado: datos.destacado,
+      stock: datos.stock,
       tags: datos.tags,
       variantes: datos.variantes,
     });
@@ -113,6 +114,7 @@ export class ProductosService {
     const sanitizedData = { ...datos } as any;
     if (sanitizedData.precioOferta === '') sanitizedData.precioOferta = undefined;
     if (sanitizedData.categoriaId === '') sanitizedData.categoriaId = undefined;
+    if (sanitizedData.stock !== undefined) sanitizedData.stock = Number(sanitizedData.stock);
 
     return this.repository.actualizar(productoId, sanitizedData);
   }
@@ -123,6 +125,19 @@ export class ProductosService {
   async eliminar(usuarioId: number, productoId: number): Promise<void> {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
+
+    // Verificamos si el producto tiene pedidos asociados para no romper la integridad de datos
+    const tienePedidos = await prisma.pedidoItem.count({
+      where: { productoId },
+    });
+
+    if (tienePedidos > 0) {
+      throw new ErrorApi(
+        'No se puede eliminar este producto porque ya tiene pedidos asociados. Podes "Ocultarlo" para que deje de estar disponible en la tienda.',
+        400
+      );
+    }
+
     await this.repository.eliminar(productoId);
   }
 
@@ -175,7 +190,10 @@ export class ProductosService {
   async crearVariante(usuarioId: number, productoId: number, datos: CrearVarianteDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
-    return this.repository.crearVariante(productoId, datos);
+    return this.repository.crearVariante(productoId, {
+      ...datos,
+      stock: Number(datos.stock || 0)
+    });
   }
 
   async actualizarVariante(
@@ -193,6 +211,17 @@ export class ProductosService {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
     await this.repository.eliminarVariante(varianteId, productoId);
+  }
+
+  async subirImagenVariante(usuarioId: number, productoId: number, varianteId: number, file: Express.Multer.File) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    await this.verificarProductoOFallar(productoId, tienda.id);
+    
+    // Subir a cloudinary
+    const imagenUrl = await uploadImageToCloudinary(file.buffer);
+    
+    // Actualizar la variante
+    return this.repository.actualizarVariante(varianteId, productoId, { imagenUrl });
   }
 
   // ── Helpers privados ──

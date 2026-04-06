@@ -22,6 +22,8 @@ export class TiendasRepository {
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
         carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+        aboutUs: true,
+        marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
       },
     });
@@ -41,6 +43,8 @@ export class TiendasRepository {
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
         carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+        aboutUs: true,
+        marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
       },
     });
@@ -120,6 +124,8 @@ export class TiendasRepository {
           metodosPago: { include: { metodoPago: true } },
           metodosEntrega: { include: { metodoEntrega: true } },
           carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+          aboutUs: true,
+          marqueeItems: { orderBy: { orden: 'asc' } },
           _count: { select: { productos: true, resenas: true } },
         },
       });
@@ -140,6 +146,8 @@ export class TiendasRepository {
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
         carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+        aboutUs: true,
+        marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
       },
     });
@@ -189,6 +197,8 @@ export class TiendasRepository {
           metodosPago: { include: { metodoPago: true } },
           metodosEntrega: { include: { metodoEntrega: true } },
           carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+          aboutUs: true,
+          marqueeItems: { orderBy: { orden: 'asc' } },
           _count: { select: { productos: true, resenas: true } },
         },
       }),
@@ -288,5 +298,37 @@ export class TiendasRepository {
         })
       )
     );
+  }
+
+  // ── About Us ──
+
+  async buscarAboutUs(tiendaId: number) {
+    return prisma.tiendaAboutUs.findUnique({ where: { tiendaId } });
+  }
+
+  async actualizarAboutUs(tiendaId: number, datos: { titulo?: string; descripcion?: string; direccion?: string; imagenUrl?: string }) {
+    return prisma.tiendaAboutUs.upsert({
+      where: { tiendaId },
+      update: datos,
+      create: { tiendaId, ...datos },
+    });
+  }
+
+  // ── Marquee ──
+
+  async listarMarquee(tiendaId: number) {
+    return prisma.tiendaMarqueeItem.findMany({
+      where: { tiendaId },
+      orderBy: { orden: 'asc' },
+    });
+  }
+
+  async actualizarMarquee(tiendaId: number, items: Array<{ texto: string; orden: number }>) {
+    return prisma.$transaction([
+      prisma.tiendaMarqueeItem.deleteMany({ where: { tiendaId } }),
+      prisma.tiendaMarqueeItem.createMany({
+        data: items.map((item) => ({ ...item, tiendaId })),
+      }),
+    ]);
   }
 }
