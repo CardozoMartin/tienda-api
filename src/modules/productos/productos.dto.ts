@@ -131,7 +131,7 @@ export type AgregarImagenDto = z.infer<typeof AgregarImagenSchema>;
 
 export const FiltrosProductosSchema = z.object({
   pagina: z.coerce.number().int().positive().default(1),
-  limite: z.coerce.number().int().positive().max(100).default(20),
+  limite: z.coerce.number().int().positive().max(1000).default(20),
   busqueda: z.string().trim().optional(),
   categoriaId: z.coerce.number().int().positive().optional(),
   disponible: z.coerce.boolean().optional(),
