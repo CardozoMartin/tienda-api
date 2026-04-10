@@ -59,9 +59,7 @@ export class TiendasService {
     return tienda;
   }
 
-  /**
-   * Obtiene la tienda del usuario autenticado (su panel de administración).
-   */
+  //Servicio para obtener la tienda de un usuario autenticado. Si no tiene tienda, devuelve error 404.
   async obtenerMiTienda(usuarioId: number) {
     const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
     if (!tienda) {
@@ -70,10 +68,7 @@ export class TiendasService {
     return tienda;
   }
 
-  /**
-   * Obtiene una tienda por slug para la vista pública.
-   * Incrementa el contador de vistas.
-   */
+  //Servicio para obtener una tienda por su slug, solo si está activa y pública. Si no se encuentra, devuelve error 404.
   async obtenerPorSlug(slug: string) {
     const tienda: any = await this.repository.buscarPorSlug(slug);
     if (!tienda || !tienda.activa || !tienda.publica) {
@@ -88,9 +83,7 @@ export class TiendasService {
     return tienda;
   }
 
-  /**
-   * Actualiza los datos de la tienda del usuario autenticado.
-   */
+  //Servicio para actualizar la tienda de un usuario autenticado, con validación de que tenga una tienda, generación de slug único si cambia el nombre, y manejo de errores.
   async actualizar(usuarioId: number, datos: ActualizarTiendaDto) {
     const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
     if (!tienda) {
@@ -112,9 +105,8 @@ export class TiendasService {
     return this.repository.actualizar(tienda.id, datosActualizacion);
   }
 
-  /**
-   * Actualiza el tema visual de la tienda del usuario autenticado.
-   */
+  //servicio para ctualizar el tema de una tienda
+  //Falta Agregar alguna forma para que no cambie el tema cada que quiera porque se llena de peticiones de cambios de temas por un solo usuario agregar alguna validacion para que se cambien por algun tiempo !!! A TESTEAR
   async actualizarTema(usuarioId: number, datos: ActualizarTemaDto) {
     const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
     if (!tienda) {
@@ -123,15 +115,13 @@ export class TiendasService {
     return this.repository.actualizarTema(tienda.id, datos);
   }
 
-  /**
-   * Lista tiendas públicas con filtros y paginación (para el directorio).
-   */
+  //Servicio para listar las tiendas con filtros de búsqueda, paginación y ordenamiento, devolviendo los datos y el total para construir la paginación en el frontend.
   async listar(filtros: FiltrosTiendasDto) {
     const { datos, total } = await this.repository.listar(filtros);
     return construirPaginacion(datos, total, filtros.pagina, filtros.limite);
   }
 
-  // ── Catálogo de métodos ──
+  // Catálogo de métodos
 
   async listarMetodosPagoCatalogo() {
     return this.repository.listarCatalogoMetodosPago();
@@ -141,7 +131,7 @@ export class TiendasService {
     return this.repository.listarCatalogoMetodosEntrega();
   }
 
-  // ── Métodos de pago (tienda) ──
+  // Métodos de pago (tienda)
 
   async agregarMetodoPago(usuarioId: number, datos: AgregarMetodoPagoDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
@@ -157,7 +147,7 @@ export class TiendasService {
     await this.repository.eliminarMetodoPago(tienda.id, metodoPagoId);
   }
 
-  // ── Métodos de entrega ──
+  //Métodos de entrega
 
   async agregarMetodoEntrega(usuarioId: number, datos: AgregarMetodoEntregaDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
@@ -174,7 +164,7 @@ export class TiendasService {
     await this.repository.eliminarMetodoEntrega(tienda.id, metodoEntregaId);
   }
 
-  // ── Carrusel ──
+  // Carrusel
 
   async agregarImagenCarrusel(
     usuarioId: number,
@@ -225,7 +215,7 @@ export class TiendasService {
     await this.repository.reordenarCarrusel(tienda.id, orden);
   }
 
-  // ── Métodos privados ──
+  // Métodos privados
 
   private async obtenerTiendaOFallar(usuarioId: number) {
     const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
@@ -235,7 +225,7 @@ export class TiendasService {
     return tienda;
   }
 
-  // ── About Us ──
+  // About Us
 
   async obtenerAboutUs(usuarioId: number) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
@@ -253,7 +243,7 @@ export class TiendasService {
     return this.repository.actualizarAboutUs(tienda.id, { imagenUrl: url });
   }
 
-  // ── Marquee ──
+  //Marquee
 
   async obtenerMarquee(usuarioId: number) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);

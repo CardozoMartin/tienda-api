@@ -1,16 +1,7 @@
 import { Router } from 'express';
 import { autenticar } from '../../middleware/auth.middleware';
 import { validar } from '../../middleware/validar.middleware';
-import {
-  actualizarPerfilCliente,
-  cambiarPasswordCliente,
-  loginCliente,
-  obtenerPerfilCliente,
-  registroCliente,
-  verificarEmailCliente,
-  solicitarResetPasswordCliente,
-  confirmarResetPasswordCliente,
-} from './cliente.controller';
+
 import {
   ActualizarClienteSchema,
   CambiarPasswordClienteSchema,
@@ -19,68 +10,39 @@ import {
   SolicitarResetPasswordClienteSchema,
   ConfirmarResetPasswordClienteSchema,
 } from './cliente.dto';
+import { ClienteController } from './cliente.controller';
 
 const router = Router();
+const controllerCliente = new ClienteController();
 
-// ─────────────────────────────────────────────
-// RUTAS PÚBLICAS (sin autenticación)
-// ─────────────────────────────────────────────
+//Rutas Publicas
+router.post('/registro', validar(RegistroClienteSchema), controllerCliente.registro);
+router.post('/login', validar(LoginClienteSchema), controllerCliente.login);
+router.get('/verificar-email/:token', controllerCliente.verificarEmail);
+router.post(
+  '/olvide-password',
+  validar(SolicitarResetPasswordClienteSchema),
+  controllerCliente.solicitarResetPassword
+);
+router.post(
+  '/reset-password',
+  validar(ConfirmarResetPasswordClienteSchema),
+  controllerCliente.confirmarResetPassword
+);
 
-/**
- * POST /api/v1/clientes/registro
- * Registrar nuevo cliente
- */
-router.post('/registro', validar(RegistroClienteSchema), registroCliente);
-
-/**
- * POST /api/v1/clientes/login
- * Autenticar cliente
- */
-router.post('/login', validar(LoginClienteSchema), loginCliente);
-
-/**
- * GET /api/v1/clientes/verificar-email/:token
- * Verificar email con token
- */
-router.get('/verificar-email/:token', verificarEmailCliente);
-
-/**
- * POST /api/v1/clientes/olvide-password
- * Solicitar reset de contraseña
- */
-router.post('/olvide-password', validar(SolicitarResetPasswordClienteSchema), solicitarResetPasswordCliente);
-
-/**
- * POST /api/v1/clientes/reset-password
- * Confirmar reset de contraseña
- */
-router.post('/reset-password', validar(ConfirmarResetPasswordClienteSchema), confirmarResetPasswordCliente);
-
-// ─────────────────────────────────────────────
-// RUTAS PROTEGIDAS (requieren autenticación)
-// ─────────────────────────────────────────────
-
-/**
- * GET /api/v1/clientes/perfil
- * Obtener perfil del cliente autenticado
- */
-router.get('/perfil', autenticar, obtenerPerfilCliente);
-
-/**
- * PUT /api/v1/clientes/perfil
- * Actualizar perfil del cliente
- */
-router.put('/perfil', autenticar, validar(ActualizarClienteSchema), actualizarPerfilCliente);
-
-/**
- * POST /api/v1/clientes/cambiar-password
- * Cambiar contraseña
- */
+//Rutas Protegidas
+router.get('/perfil', autenticar, controllerCliente.obtenerPerfil);
+router.put(
+  '/perfil',
+  autenticar,
+  validar(ActualizarClienteSchema),
+  controllerCliente.actualizarPerfil
+);
 router.post(
   '/cambiar-password',
   autenticar,
   validar(CambiarPasswordClienteSchema),
-  cambiarPasswordCliente
+  controllerCliente.cambiarPassword
 );
 
 export default router;

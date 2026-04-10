@@ -8,6 +8,8 @@ import { ErrorApi, RequestAutenticado } from "../../types";
 const carritoService = new CarritoService(new CarritoRepository(), new ProductosRepository());
 
 export class CarritoController {
+
+  //controlador para obtener el carrito de compras de un usuario
   obtenerCarrito = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const tiendaId = Number(req.params.tiendaId);
@@ -25,6 +27,7 @@ export class CarritoController {
     }
   };
 
+  //controlador para agregar un item al carrito de compras, con validación de datos y manejo de sesión
   agregarItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const tiendaId = Number(req.body.tiendaId);
@@ -44,13 +47,14 @@ export class CarritoController {
         varianteId,
         cantidad,
       });
-      
+
       responderOk(res, carrito, "Item agregado exitosamente", 201);
     } catch (error) {
       next(error);
     }
   };
 
+  //controlador para actualizar la cantidad de un item en el carrito de compras, con validación de datos
   actualizarCantidad = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const tiendaId = Number(req.body.tiendaId);
@@ -67,13 +71,14 @@ export class CarritoController {
         itemId,
         cantidad,
       });
-      
+
       responderOk(res, carrito, "Cantidad actualizada exitosamente");
     } catch (error) {
       next(error);
     }
   };
 
+  //controlador para eliminar un item del carrito de compras, con validación de datos
   eliminarItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const tiendaId = Number(req.query.tiendaId || req.body.tiendaId);
@@ -89,13 +94,14 @@ export class CarritoController {
         sessionId,
         itemId,
       });
-      
+
       responderOk(res, carrito, "Item eliminado exitosamente");
     } catch (error) {
       next(error);
     }
   };
 
+  //controlador para vaciar el carrito de compras, con validación de datos
   vaciarCarrito = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const tiendaId = Number(req.params.tiendaId);

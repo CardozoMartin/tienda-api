@@ -1,6 +1,3 @@
-// Service de autenticación.
-// Contiene toda la lógica de negocio: hashing de passwords, generación de tokens,
-// validación de expiración, etc. Depende del repository para acceso a datos.
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -191,7 +188,7 @@ export class AuthService {
 
     // Respondemos siempre con éxito para no revelar si el email existe (seguridad)
     const mensajeGenerico =
-      'Si existe una cuenta con ese email, recibirás las instrucciones para restablecer tu contraseña.';
+      'Si existe una cuenta cn ese email, recibirás las instrucciones para restablecer tu contraseña.';
 
     if (!usuario || !usuario.activo) {
       return { mensaje: mensajeGenerico };
@@ -225,7 +222,7 @@ export class AuthService {
     return { mensaje: 'Contraseña restablecida exitosamente. Ya podés iniciar sesión.' };
   }
 
-  // MÉTODOS PRIVADOS
+  // metodo privados
 
   //metodo privado para generar access y refresh tokens JWT, con payload de usuario y expiraciones configurables
   private generarTokens(

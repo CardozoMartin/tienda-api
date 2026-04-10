@@ -1,7 +1,6 @@
 import { Decimal } from "@prisma/client/runtime/library";
 import { prisma } from "../../config/prisma";
 
-// ── INCLUDE REUTILIZABLE ──────────────────────────────────────
 // Se usa en todas las queries que devuelven items del carrito
 // para no repetir el mismo bloque de includes en cada método
 
@@ -17,17 +16,14 @@ const INCLUDE_ITEMS = {
           _count: { select: { resenas: true } },
         },
       },
-      // Incluimos la variante del item si tiene una seleccionada
       variante: true,
     },
   },
 } as const;
 
 export class CarritoRepository {
-  // ── OBTENER CARRITO ─────────────────────────────────────────
-  // Busca el carrito activo por tiendaId + sessionId
-  // El sessionId es un UUID generado en el frontend y guardado en localStorage
-  // Aplica tanto para invitados como para clientes logueados
+
+  //Query para obtener el carrito de compras de un usuario por tiendaId y sessionId.
   async obtenerCarrito(tiendaId: number, sessionId: string) {
     return await prisma.carrito.findUnique({
       where: {
@@ -38,9 +34,7 @@ export class CarritoRepository {
     });
   }
 
-  // ── CREAR CARRITO ───────────────────────────────────────────
-  // Crea un carrito nuevo con su primer item incluido.
-  // precioUnit viene del service (snapshot del precio actual del producto)
+ //Query para crear un carrito nuevo con un item inicial, como invitado o cliente
   async crearCarrito(
     tiendaId: number,
     sessionId: string,
@@ -56,14 +50,12 @@ export class CarritoRepository {
         tiendaId,
         sessionId,
         expiresAt,
-        // clienteId es null si el comprador es invitado
         ...(clienteId ? { clienteId } : {}),
         items: {
           create: {
             productoId,
             cantidad,
             precioUnit,
-            // varianteId es null si el producto no tiene variante seleccionada
             ...(varianteId ? { varianteId } : {}),
           },
         },
@@ -72,12 +64,7 @@ export class CarritoRepository {
     });
   }
 
-  // ── UPSERT ITEM ─────────────────────────────────────────────
-  // Agrega un producto al carrito existente.
-  // Si el producto+variante ya está en el carrito, suma la cantidad.
-  // Si no existe, crea el item nuevo.
-  // Nota: el @@unique([carritoId, productoId, varianteId]) no funciona
-  // bien con varianteId nullable en MySQL, por eso lo manejamos acá manualmente.
+  //Query para agregar o actualizar un item en el carrito, dependiendo si ya existe o no
   async upsertItem(
     carritoId: number,
     productoId: number,
@@ -139,9 +126,7 @@ export class CarritoRepository {
     });
   }
 
-  // ── ACTUALIZAR CANTIDAD ─────────────────────────────────────
-  // Cambia la cantidad de un item específico por su id.
-  // El controller/service valida que el item pertenezca al carrito correcto.
+  //Query para actualizar la cantidad de un item en el carrito, por su id de item
   async actualizarCantidad(itemId: number, cantidad: number) {
     return await prisma.carritoItem.update({
       where: { id: itemId },
@@ -149,7 +134,7 @@ export class CarritoRepository {
     });
   }
 
-  // ── ELIMINAR ITEM ───────────────────────────────────────────
+
   // Elimina un item del carrito por su id.
   async eliminarItem(itemId: number) {
     return await prisma.carritoItem.delete({
@@ -157,7 +142,7 @@ export class CarritoRepository {
     });
   }
 
-  // ── VACIAR CARRITO ──────────────────────────────────────────
+
   // Elimina todos los items del carrito (no el carrito en sí).
   async vaciarCarrito(carritoId: number) {
     return await prisma.carritoItem.deleteMany({
@@ -165,19 +150,14 @@ export class CarritoRepository {
     });
   }
 
-  // ── ELIMINAR CARRITO ────────────────────────────────────────
-  // Elimina el carrito completo (cascade elimina los items).
-  // Se llama después de crear el pedido para limpiar el carrito.
+  //Query para eliminar un carrito completo por su id . Tambien para hacer limpieza de carrtitos expritados
   async eliminarCarrito(carritoId: number) {
     return await prisma.carrito.delete({
       where: { id: carritoId },
     });
   }
 
-  // ── ASOCIAR CLIENTE ─────────────────────────────────────────
-  // Cuando un invitado se loguea, asociamos su carrito existente
-  // (identificado por sessionId) al clienteId para que no pierda
-  // los productos que ya había agregado antes de loguearse.
+  //Query para asociar un carrito creado como invitado a un cliente registrado, actualizando su clienteId
   async asociarCliente(carritoId: number, clienteId: number) {
     return await prisma.carrito.update({
       where: { id: carritoId },

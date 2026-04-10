@@ -31,9 +31,6 @@ describe('ClienteController', () => {
     jest.restoreAllMocks();
   });
 
-  // ─────────────────────────────────────────────
-  // TESTS: POST /registro
-  // ─────────────────────────────────────────────
 
   describe('POST /api/v1/clientes/registro', () => {
     it('debe retornar 400 si email es inválido', async () => {
@@ -79,9 +76,7 @@ describe('ClienteController', () => {
     });
   });
 
-  // ─────────────────────────────────────────────
-  // TESTS: POST /login
-  // ─────────────────────────────────────────────
+
 
   describe('POST /api/v1/clientes/login', () => {
     it('debe retornar 400 si email inválido', async () => {
@@ -106,9 +101,6 @@ describe('ClienteController', () => {
     });
   });
 
-  // ─────────────────────────────────────────────
-  // TESTS: GET /verificar-email/:token
-  // ─────────────────────────────────────────────
 
   describe('GET /api/v1/clientes/verificar-email/:token', () => {
     it('debe aceptar GET con token válido', async () => {
@@ -122,9 +114,7 @@ describe('ClienteController', () => {
     });
   });
 
-  // ─────────────────────────────────────────────
-  // TESTS: GET /perfil (protegido)
-  // ─────────────────────────────────────────────
+
 
   describe('GET /api/v1/clientes/perfil (protegido)', () => {
     it('debe rechazar sin token (401)', async () => {
@@ -168,9 +158,6 @@ describe('ClienteController', () => {
     });
   });
 
-  // ─────────────────────────────────────────────
-  // TESTS: PUT /perfil (protegido)
-  // ─────────────────────────────────────────────
 
   describe('PUT /api/v1/clientes/perfil (protegido)', () => {
     it('debe rechazar sin token (401)', async () => {
@@ -211,9 +198,6 @@ describe('ClienteController', () => {
     });
   });
 
-  // ─────────────────────────────────────────────
-  // TESTS: POST /cambiar-password (protegido)
-  // ─────────────────────────────────────────────
 
   describe('POST /api/v1/clientes/cambiar-password (protegido)', () => {
     it('debe rechazar sin token (401)', async () => {

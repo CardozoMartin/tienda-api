@@ -75,10 +75,7 @@ export const ActualizarTemaSchema = z.object({
 
 export type ActualizarTemaDto = z.infer<typeof ActualizarTemaSchema>;
 
-// ─────────────────────────────────────────────
-// MÉTODOS DE PAGO / ENTREGA
-// ─────────────────────────────────────────────
-
+//Metodos de pago y entrega
 export const AgregarMetodoPagoSchema = z.object({
   metodoPagoId: z.number().int().positive('El ID del método de pago es requerido'),
   detalle: z.string().max(255).trim().optional(),
@@ -94,10 +91,7 @@ export const AgregarMetodoEntregaSchema = z.object({
 
 export type AgregarMetodoEntregaDto = z.infer<typeof AgregarMetodoEntregaSchema>;
 
-// ─────────────────────────────────────────────
-// CARRUSEL
-// ─────────────────────────────────────────────
-
+//Carrusel de imágenes
 export const AgregarImagenCarruselSchema = z.object({
   url: z.string().url('La URL de la imagen no es válida').max(500).optional(), // Optional si se suben archivos
   titulo: z.string().max(200).trim().optional(),
@@ -108,10 +102,7 @@ export const AgregarImagenCarruselSchema = z.object({
 
 export type AgregarImagenCarruselDto = z.infer<typeof AgregarImagenCarruselSchema>;
 
-// ─────────────────────────────────────────────
-// FILTROS PARA BÚSQUEDA PÚBLICA
-// ─────────────────────────────────────────────
-
+//Filtros para listar tiendas en el endpoint público, con paginación, búsqueda por nombre y ubicación, y ordenamiento
 export const FiltrosTiendasSchema = z.object({
   pagina: z.coerce.number().int().positive().default(1),
   limite: z.coerce.number().int().positive().max(50).default(20),
@@ -124,10 +115,7 @@ export const FiltrosTiendasSchema = z.object({
 
 export type FiltrosTiendasDto = z.infer<typeof FiltrosTiendasSchema>;
 
-// ─────────────────────────────────────────────
-// ABOUT US
-// ─────────────────────────────────────────────
-
+//Sobre nosotros
 export const ActualizarAboutUsSchema = z.object({
   titulo: z.string().max(200).trim().optional(),
   descripcion: z.string().max(5000).trim().optional(),
@@ -137,10 +125,7 @@ export const ActualizarAboutUsSchema = z.object({
 
 export type ActualizarAboutUsDto = z.infer<typeof ActualizarAboutUsSchema>;
 
-// ─────────────────────────────────────────────
-// MARQUEE
-// ─────────────────────────────────────────────
-
+//Slider que puede mostrar marcas frases etc
 export const MarqueeItemSchema = z.object({
   texto: z.string().min(1).max(100).trim(),
   orden: z.number().int().min(0).default(0),

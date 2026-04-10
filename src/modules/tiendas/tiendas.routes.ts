@@ -1,5 +1,4 @@
-// Rutas del módulo de tiendas.
-// Separamos rutas públicas de las protegidas (owner).
+
 import { RolUsuario } from '@prisma/client';
 import { Router } from 'express';
 import { autenticar, autorizar } from '../../middleware/auth.middleware';
@@ -22,9 +21,9 @@ import { uploadMultiple, uploadSingle } from '@/config/multer.config';
 const router = Router();
 const controller = new TiendasController();
 
-// ─────────────────────────────────────────────
+
 // RUTAS PÚBLICAS
-// ─────────────────────────────────────────────
+
 
 // Directorio de tiendas
 router.get('/', validar(FiltrosTiendasSchema, 'query'), controller.listar);
@@ -33,11 +32,11 @@ router.get('/', validar(FiltrosTiendasSchema, 'query'), controller.listar);
 router.get('/metodos-pago', controller.listarMetodosPago);
 router.get('/metodos-entrega', controller.listarMetodosEntrega);
 
-// ─────────────────────────────────────────────
+
 // RUTAS PROTEGIDAS - OWNER
 // Requieren autenticación + rol OWNER o ADMIN
 // IMPORTANTE: Deben ir ANTES de /:slug para no ser capturadas como slug
-// ─────────────────────────────────────────────
+
 
 const soloOwner = [autenticar, autorizar(RolUsuario.OWNER, RolUsuario.ADMIN)];
 

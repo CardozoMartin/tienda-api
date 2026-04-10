@@ -18,7 +18,7 @@ import { TiendasRepository } from '../tiendas/tiendas.repository';
 
 export class ClienteService {
   private repo: ClienteRepository;
-  private tiendarepo: TiendasRepository
+  private tiendarepo: TiendasRepository;
 
   constructor() {
     this.repo = new ClienteRepository();
@@ -56,11 +56,9 @@ export class ClienteService {
     const tienda = await this.tiendarepo.buscarPorId(input.tiendaId);
     console.log('Tienda encontrada para email de verificación:', tienda);
     // Enviar email de verificación (sin await para no bloquear)
-    enviarEmailVerificacionAlCliente(input.email, input.nombre, tokenVerif, tienda.nombre).catch((err: Error) =>
-      console.error('Error enviando email verificación:', err)
+    enviarEmailVerificacionAlCliente(input.email, input.nombre, tokenVerif, tienda.nombre).catch(
+      (err: Error) => console.error('Error enviando email verificación:', err)
     );
-
- 
 
     return {
       id: cliente.id,
@@ -119,9 +117,7 @@ export class ClienteService {
     };
   }
 
-  /**
-   * VERIFICAR EMAIL: Confirmar email del cliente
-   */
+  //servicio para verificar el email de un cliente usando el token de verificación
   async verificarEmail(tokenVerif: string) {
     const cliente = await this.repo.buscarPorTokenVerificacion(tokenVerif);
 
@@ -137,14 +133,13 @@ export class ClienteService {
     };
   }
 
-  /**
-   * SOLICITAR RESET PASSWORD
-   */
+  //servicio para solicitar reset de contraseña, generando un token de reset y enviando email con instrucciones
   async solicitarResetPassword(input: SolicitarResetPasswordClienteInput) {
     const cliente = await this.repo.buscarPorEmailEnTienda(input.email, input.tiendaId);
 
     // Mensaje genérico por seguridad
-    const mensajeOk = 'Si existe una cuenta registrada con ese email, recibirás las instrucciones en breve.';
+    const mensajeOk =
+      'Si existe una cuenta registrada con ese email, recibirás las instrucciones en breve.';
 
     if (!cliente || !cliente.activo) {
       return { mensaje: mensajeOk };
@@ -163,9 +158,7 @@ export class ClienteService {
     return { mensaje: mensajeOk };
   }
 
-  /**
-   * CONFIRMAR RESET PASSWORD
-   */
+  //servicio para confirmar reset de contraseña, verificando el token de reset y actualizando la contraseña
   async confirmarResetPassword(input: ConfirmarResetPasswordClienteInput) {
     const cliente = await this.repo.buscarPorTokenReset(input.token);
 
@@ -185,9 +178,7 @@ export class ClienteService {
     return { mensaje: 'Tu contraseña ha sido restablecida con éxito.' };
   }
 
-  /**
-   * OBTENER PERFIL: Obtener datos del cliente autenticado
-   */
+  //servicio para obtener el perfil del cliente autenticado
   async obtenerPerfil(clienteId: number) {
     const cliente = await this.repo.buscarPorId(clienteId);
 
@@ -198,9 +189,7 @@ export class ClienteService {
     return cliente;
   }
 
-  /**
-   * ACTUALIZAR PERFIL: Modificar datos del cliente
-   */
+  //servicio para actualizar el perfil del cliente
   async actualizarPerfil(clienteId: number, input: ActualizarClienteInput) {
     const cliente = await this.repo.actualizar(clienteId, input);
 
@@ -214,9 +203,7 @@ export class ClienteService {
     };
   }
 
-  /**
-   * CAMBIAR CONTRASEÑA
-   */
+  //servicio para cambiar la contraseña del cliente autenticado, validando la contraseña actual y hasheando la nueva contraseña
   async cambiarPassword(clienteId: number, input: CambiarPasswordClienteInput) {
     // Obtener cliente
     const cliente = await this.repo.buscarPorId(clienteId);
