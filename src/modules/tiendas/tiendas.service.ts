@@ -15,6 +15,8 @@ import {
   ActualizarMarqueeDto,
 } from "./tiendas.dto";
 import { uploadImageToCloudinary } from "@/utils/cloudinary";
+import { cacheService } from "../../utils/cache";
+import { logger } from "../../utils/logger";
 
 export class TiendasService {
   private repository: TiendasRepository;
@@ -70,14 +72,20 @@ export class TiendasService {
 
   //Servicio para obtener una tienda por su slug, solo si está activa y pública. Si no se encuentra, devuelve error 404.
   async obtenerPorSlug(slug: string) {
-    const tienda: any = await this.repository.buscarPorSlug(slug);
-    if (!tienda || !tienda.activa || !tienda.publica) {
-      throw new ErrorApi("Tienda no encontrada", 404);
+    const cacheKey = `tienda_slug_${slug}`;
+    let tienda: any = cacheService.get(cacheKey);
+
+    if (!tienda) {
+      tienda = await this.repository.buscarPorSlug(slug);
+      if (!tienda || !tienda.activa || !tienda.publica) {
+        throw new ErrorApi("Tienda no encontrada", 404);
+      }
+      cacheService.set(cacheKey, tienda);
     }
 
     // Incrementamos las vistas de forma asíncrona, sin bloquear la respuesta
     this.repository.incrementarVistas(tienda.id).catch((err) =>
-      console.error("[TIENDAS] Error al incrementar vistas:", err)
+      logger.error("[TIENDAS] Error al incrementar vistas:", err)
     );
 
     return tienda;
@@ -102,7 +110,9 @@ export class TiendasService {
       datosActualizacion = { ...datosActualizacion, slug: nuevoSlug };
     }
 
-    return this.repository.actualizar(tienda.id, datosActualizacion);
+    const resultado = await this.repository.actualizar(tienda.id, datosActualizacion);
+    this.invalidarCacheTienda(tienda.slug);
+    return resultado;
   }
 
   //servicio para ctualizar el tema de una tienda
@@ -112,7 +122,9 @@ export class TiendasService {
     if (!tienda) {
       throw new ErrorApi("No tenés ninguna tienda creada", 404);
     }
-    return this.repository.actualizarTema(tienda.id, datos);
+    const resultado = await this.repository.actualizarTema(tienda.id, datos);
+    this.invalidarCacheTienda(tienda.slug);
+    return resultado;
   }
 
   //Servicio para listar las tiendas con filtros de búsqueda, paginación y ordenamiento, devolviendo los datos y el total para construir la paginación en el frontend.
@@ -135,33 +147,39 @@ export class TiendasService {
 
   async agregarMetodoPago(usuarioId: number, datos: AgregarMetodoPagoDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
-    return this.repository.agregarMetodoPago(
+    const result = await this.repository.agregarMetodoPago(
       tienda.id,
       datos.metodoPagoId,
       datos.detalle
     );
+    this.invalidarCacheTienda(tienda.slug);
+    return result;
   }
 
   async eliminarMetodoPago(usuarioId: number, metodoPagoId: number) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.repository.eliminarMetodoPago(tienda.id, metodoPagoId);
+    this.invalidarCacheTienda(tienda.slug);
   }
 
   //Métodos de entrega
 
   async agregarMetodoEntrega(usuarioId: number, datos: AgregarMetodoEntregaDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
-    return this.repository.agregarMetodoEntrega(
+    const result = await this.repository.agregarMetodoEntrega(
       tienda.id,
       datos.metodoEntregaId,
       datos.zonaCobertura,
       datos.detalle
     );
+    this.invalidarCacheTienda(tienda.slug);
+    return result;
   }
 
   async eliminarMetodoEntrega(usuarioId: number, metodoEntregaId: number) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.repository.eliminarMetodoEntrega(tienda.id, metodoEntregaId);
+    this.invalidarCacheTienda(tienda.slug);
   }
 
   // Carrusel
@@ -199,12 +217,14 @@ export class TiendasService {
       imagenesCreadas.push(resultado);
     }
 
+    this.invalidarCacheTienda(tienda.slug);
     return imagenesCreadas;
   }
 
   async eliminarImagenCarrusel(usuarioId: number, imagenId: number) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.repository.eliminarImagenCarrusel(imagenId, tienda.id);
+    this.invalidarCacheTienda(tienda.slug);
   }
 
   async reordenarCarrusel(
@@ -213,6 +233,7 @@ export class TiendasService {
   ) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.repository.reordenarCarrusel(tienda.id, orden);
+    this.invalidarCacheTienda(tienda.slug);
   }
 
   // Métodos privados
@@ -225,6 +246,11 @@ export class TiendasService {
     return tienda;
   }
 
+  private invalidarCacheTienda(slug: string) {
+    cacheService.del(`tienda_slug_${slug}`);
+    // También podríamos purgar los productos con flushPrefix(`productos_tienda_${id}`)
+  }
+
   // About Us
 
   async obtenerAboutUs(usuarioId: number) {
@@ -234,13 +260,17 @@ export class TiendasService {
 
   async actualizarAboutUs(usuarioId: number, datos: ActualizarAboutUsDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
-    return this.repository.actualizarAboutUs(tienda.id, datos);
+    const resultado = await this.repository.actualizarAboutUs(tienda.id, datos);
+    this.invalidarCacheTienda(tienda.slug);
+    return resultado;
   }
 
   async subirImagenAboutUs(usuarioId: number, file: Express.Multer.File) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     const url = await uploadImageToCloudinary(file.buffer);
-    return this.repository.actualizarAboutUs(tienda.id, { imagenUrl: url });
+    const resultado = await this.repository.actualizarAboutUs(tienda.id, { imagenUrl: url });
+    this.invalidarCacheTienda(tienda.slug);
+    return resultado;
   }
 
   //Marquee
@@ -252,6 +282,8 @@ export class TiendasService {
 
   async actualizarMarquee(usuarioId: number, datos: ActualizarMarqueeDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
-    return this.repository.actualizarMarquee(tienda.id, datos.items);
+    const resultado = await this.repository.actualizarMarquee(tienda.id, datos.items);
+    this.invalidarCacheTienda(tienda.slug);
+    return resultado;
   }
 }

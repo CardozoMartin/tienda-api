@@ -13,6 +13,7 @@ import {
   FiltrosProductosDto,
 } from './productos.dto';
 import { ProductosRepository } from './productos.repository';
+import { cacheService } from '../../utils/cache';
 
 export class ProductosService {
   private repository: ProductosRepository;
@@ -28,8 +29,15 @@ export class ProductosService {
    * Solo muestra productos disponibles.
    */
   async listarPublicos(tiendaId: number, filtros: FiltrosProductosDto) {
+    const cacheKey = `productos_tienda_${tiendaId}_publicos_${JSON.stringify(filtros)}`;
+    const cached = cacheService.get(cacheKey);
+    if (cached) return cached;
+
     const { datos, total } = await this.repository.listar(tiendaId, filtros, true);
-    return construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    const resultado = construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    
+    cacheService.set(cacheKey, resultado);
+    return resultado;
   }
 
   /**
@@ -45,6 +53,14 @@ export class ProductosService {
    * Obtiene un producto por ID para vista pública.
    */
   async obtenerPublico(tiendaId: number, productoId: number) {
+    const cacheKey = `productos_tienda_${tiendaId}_detalle_${productoId}`;
+    const cached = cacheService.get(cacheKey);
+    if (cached) {
+      // Incrementamos vistas de forma asíncrona
+      this.repository.incrementarVistas(productoId).catch(console.error);
+      return cached;
+    }
+
     const producto = await this.repository.buscarPorId(productoId, tiendaId);
     if (!producto || !producto.disponible) {
       throw new ErrorApi('Producto no encontrado', 404);
@@ -53,6 +69,7 @@ export class ProductosService {
     // Incrementamos vistas de forma asíncrona
     this.repository.incrementarVistas(productoId).catch(console.error);
 
+    cacheService.set(cacheKey, producto);
     return producto;
   }
 
@@ -86,7 +103,7 @@ export class ProductosService {
       imagenPrincipalUrl = await uploadImageToCloudinary(imagenFile.buffer);
     }
 
-    return this.repository.crear({
+    const nuevoProducto = await this.repository.crear({
       tiendaId: tienda.id,
       nombre: datos.nombre,
       descripcion: datos.descripcion,
@@ -102,6 +119,8 @@ export class ProductosService {
       tags: datos.tags,
       variantes: datos.variantes,
     });
+    this.invalidarCacheProductos(tienda.id);
+    return nuevoProducto;
   }
 
   /**
@@ -116,7 +135,9 @@ export class ProductosService {
     if (sanitizedData.categoriaId === '') sanitizedData.categoriaId = undefined;
     if (sanitizedData.stock !== undefined) sanitizedData.stock = Number(sanitizedData.stock);
 
-    return this.repository.actualizar(productoId, sanitizedData);
+    const actualizado = await this.repository.actualizar(productoId, sanitizedData);
+    this.invalidarCacheProductos(tienda.id);
+    return actualizado;
   }
 
   /**
@@ -139,6 +160,7 @@ export class ProductosService {
     }
 
     await this.repository.eliminar(productoId);
+    this.invalidarCacheProductos(tienda.id);
   }
 
   /**
@@ -148,6 +170,7 @@ export class ProductosService {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
     await this.repository.sincronizarTags(productoId, tags);
+    this.invalidarCacheProductos(tienda.id);
   }
 
   // ── Imágenes ──
@@ -176,13 +199,16 @@ export class ProductosService {
       imagenUrl = await uploadImageToCloudinary(file.buffer);
     }
 
-    return this.repository.agregarImagen(productoId, imagenUrl, datos.orden);
+    const agregada = await this.repository.agregarImagen(productoId, imagenUrl, datos.orden);
+    this.invalidarCacheProductos(tienda.id);
+    return agregada;
   }
 
   async eliminarImagen(usuarioId: number, productoId: number, imagenId: number) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
     await this.repository.eliminarImagen(imagenId, productoId);
+    this.invalidarCacheProductos(tienda.id);
   }
 
   // ── Variantes ──
@@ -190,10 +216,12 @@ export class ProductosService {
   async crearVariante(usuarioId: number, productoId: number, datos: CrearVarianteDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
-    return this.repository.crearVariante(productoId, {
+    const variante = await this.repository.crearVariante(productoId, {
       ...datos,
       stock: Number(datos.stock || 0)
     });
+    this.invalidarCacheProductos(tienda.id);
+    return variante;
   }
 
   async actualizarVariante(
@@ -204,13 +232,16 @@ export class ProductosService {
   ) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
-    return this.repository.actualizarVariante(varianteId, productoId, datos);
+    const variante = await this.repository.actualizarVariante(varianteId, productoId, datos);
+    this.invalidarCacheProductos(tienda.id);
+    return variante;
   }
 
   async eliminarVariante(usuarioId: number, productoId: number, varianteId: number) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
     await this.repository.eliminarVariante(varianteId, productoId);
+    this.invalidarCacheProductos(tienda.id);
   }
 
   async subirImagenVariante(usuarioId: number, productoId: number, varianteId: number, file: Express.Multer.File) {
@@ -221,7 +252,9 @@ export class ProductosService {
     const imagenUrl = await uploadImageToCloudinary(file.buffer);
     
     // Actualizar la variante
-    return this.repository.actualizarVariante(varianteId, productoId, { imagenUrl });
+    const variante = await this.repository.actualizarVariante(varianteId, productoId, { imagenUrl });
+    this.invalidarCacheProductos(tienda.id);
+    return variante;
   }
 
   // ── Helpers privados ──
@@ -238,28 +271,44 @@ export class ProductosService {
     return producto;
   }
 
+  private invalidarCacheProductos(tiendaId: number) {
+    cacheService.flushPrefix(`productos_tienda_${tiendaId}`);
+  }
+
   /**
    * Lista solo productos destacados de una tienda (público).
    */
   async listarDestacados(tiendaId: number, filtros: FiltrosProductosDto) {
+    const cacheKey = `productos_tienda_${tiendaId}_destacados_${JSON.stringify(filtros)}`;
+    const cached = cacheService.get(cacheKey);
+    if (cached) return cached;
+
     const { datos, total } = await this.repository.listar(
       tiendaId,
       { ...filtros, destacado: true },
       true
     );
-    return construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    const resultado = construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    cacheService.set(cacheKey, resultado);
+    return resultado;
   }
 
   /**
    * Lista solo productos normales (no destacados) de una tienda (público).
    */
   async listarNormales(tiendaId: number, filtros: FiltrosProductosDto) {
+    const cacheKey = `productos_tienda_${tiendaId}_normales_${JSON.stringify(filtros)}`;
+    const cached = cacheService.get(cacheKey);
+    if (cached) return cached;
+
     const { datos, total } = await this.repository.listar(
       tiendaId,
       { ...filtros, destacado: false },
       true
     );
-    return construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    const resultado = construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    cacheService.set(cacheKey, resultado);
+    return resultado;
   }
 
   // ── Categorías ──
@@ -376,6 +425,7 @@ export class ProductosService {
       }
     }
 
+    this.invalidarCacheProductos(tienda.id);
     return { creados, actualizados, total: data.length };
   }
 }

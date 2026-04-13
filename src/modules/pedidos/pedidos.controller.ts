@@ -39,9 +39,14 @@ export class PedidosController {
       const usuario = (req as any).usuario;
       const pedido = await this.service.obtenerPorId(parseInt(id, 10));
 
-      // Si es un cliente, solo puede ver SU pedido
-      if (usuario.rol === 'CLIENT' && pedido.clienteId !== usuario.sub) {
-        throw new Error('No tienes permiso para ver este pedido');
+      // Si es un cliente, solo puede ver SU pedido (vinculado por ID o por Email si es invitado)
+      if (usuario.rol === 'CLIENT') {
+        const esSuId = pedido.clienteId === usuario.sub;
+        const esSuEmailInvitado = !pedido.clienteId && pedido.compradorEmail === usuario.email;
+        
+        if (!esSuId && !esSuEmailInvitado) {
+          throw new Error('No tienes permiso para ver este pedido');
+        }
       }
 
       responderOk(res, pedido, 'Pedido obtenido exitosamente');

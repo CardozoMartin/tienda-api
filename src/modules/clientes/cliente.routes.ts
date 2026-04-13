@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { autenticar } from '../../middleware/auth.middleware';
+import { autenticar, autenticarCliente } from '../../middleware/auth.middleware';
 import { validar } from '../../middleware/validar.middleware';
 
 import {
@@ -30,7 +30,7 @@ router.post(
   controllerCliente.confirmarResetPassword
 );
 
-//Rutas Protegidas
+//Rutas Protegidas (perfil — usa autenticar genérico)
 router.get('/perfil', autenticar, controllerCliente.obtenerPerfil);
 router.put(
   '/perfil',
@@ -44,5 +44,8 @@ router.post(
   validar(CambiarPasswordClienteSchema),
   controllerCliente.cambiarPassword
 );
+
+// Ruta protegida exclusiva para clientes: ver sus propios pedidos
+router.get('/mis-pedidos', autenticarCliente, controllerCliente.obtenerMisPedidos);
 
 export default router;

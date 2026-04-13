@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
-import { responderOk } from '../../utils/helpers';
+import { responderOk, responderPaginado } from '../../utils/helpers';
 import { ClienteService } from './cliente.service';
+import { PedidosRepository } from '../pedidos/pedidos.repository';
 
 export class ClienteController {
   private service: ClienteService;
@@ -9,7 +10,7 @@ export class ClienteController {
     this.service = new ClienteService();
   }
 
-  //controlador para regsitrar un nuevo cliente
+  //controlador para registrar un nuevo cliente
   registro = async (req: Request, res: Response, next: any): Promise<void> => {
     try {
       const resultado = await this.service.registro(req.body);
@@ -18,6 +19,7 @@ export class ClienteController {
       next(error);
     }
   };
+
   //controlador para iniciar sesión de cliente
   login = async (req: Request, res: Response, next: any): Promise<void> => {
     try {
@@ -27,6 +29,7 @@ export class ClienteController {
       next(error);
     }
   };
+
   //controlador para verificar email de cliente
   verificarEmail = async (req: Request, res: Response, next: any): Promise<void> => {
     try {
@@ -86,6 +89,35 @@ export class ClienteController {
     try {
       const resultado = await this.service.confirmarResetPassword(req.body);
       responderOk(res, resultado, 'Contraseña restablecida', 200);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para obtener los pedidos del cliente autenticado (usando su JWT de cliente)
+  obtenerMisPedidos = async (req: Request, res: Response, next: any): Promise<void> => {
+    try {
+      const clienteAutenticado = (req as any).clienteAutenticado;
+      const clienteId = clienteAutenticado?.id;
+
+      if (!clienteId) {
+        res.status(401).json({ ok: false, mensaje: 'No autenticado' });
+        return;
+      }
+
+      const repo = new PedidosRepository();
+      const { datos, total } = await repo.listar({ 
+        clienteId, 
+        email: clienteAutenticado?.email 
+      });
+
+      responderPaginado(res, {
+        datos,
+        total,
+        pagina: 1,
+        limite: total || 10,
+        totalPaginas: 1,
+      } as any, 'Pedidos obtenidos correctamente');
     } catch (error) {
       next(error);
     }

@@ -98,7 +98,7 @@ export class PedidosRepository {
   }
 
   async listar(filtros: any) {
-    let { tiendaId, clienteId, estado, pagina = 1, limite = 10 } = filtros;
+    let { tiendaId, clienteId, email, estado, pagina = 1, limite = 10 } = filtros;
     
     // Asegurar tipos numéricos para Prisma
     pagina = Number(pagina);
@@ -106,7 +106,19 @@ export class PedidosRepository {
 
     const where: any = {};
     if (tiendaId) where.tiendaId = Number(tiendaId);
-    if (clienteId) where.clienteId = Number(clienteId);
+
+    if (clienteId && email) {
+      // Si tenemos ID y Email, buscamos pedidos vinculados al ID O pedidos como invitado con ese email
+      where.OR = [
+        { clienteId: Number(clienteId) },
+        { AND: [{ compradorEmail: email }, { clienteId: null }] }
+      ];
+    } else if (clienteId) {
+      where.clienteId = Number(clienteId);
+    } else if (email) {
+      where.compradorEmail = email;
+    }
+
     if (estado) where.estado = estado;
 
     const [datos, total] = await prisma.$transaction([
@@ -116,7 +128,7 @@ export class PedidosRepository {
         take: limite,
         orderBy: { creadoEn: 'desc' },
         include: {
-          _count: { select: { items: true } },
+          items: true,
           metodoEntrega: true,
           metodoPago: true,
         },
