@@ -28,7 +28,7 @@ router.use('/pedidos', pedidosRouter); // Para listar todos o por filtros desde 
 router.use('/ai', aiRouter);
 
 // Ruta de prueba para verificar la integración con Sentry
-router.get('/debug-sentry', function mainHandler(req, res) {
+router.get('/debug-sentry', function mainHandler() {
   throw new Error("My first Sentry error!");
 });
 

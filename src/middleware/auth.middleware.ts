@@ -3,7 +3,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
-import { JwtPayload, RequestAutenticado, ErrorApi } from "../types";
+import { RequestAutenticado, ErrorApi } from "../types";
 import { RolUsuario } from "@prisma/client";
 
 /**

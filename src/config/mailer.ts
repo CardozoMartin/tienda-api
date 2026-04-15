@@ -13,8 +13,8 @@ export async function inicializarMailer() {
   if (env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS) {
     transporter = nodemailer.createTransport({
       host: env.SMTP_HOST,
-      port: parseInt(env.SMTP_PORT || "587", 10),
-      secure: env.SMTP_SECURE === "true",
+      port: parseInt(String(env.SMTP_PORT || "587"), 10),
+      secure: env.SMTP_SECURE === true,
       auth: {
         user: env.SMTP_USER,
         pass: env.SMTP_PASS,
