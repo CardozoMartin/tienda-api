@@ -1,18 +1,20 @@
-// Controller de autenticación.
-// Responsabilidad: recibir el request, llamar al service, y enviar la respuesta.
-// No contiene lógica de negocio, solo orquestación HTTP.
-import { Request, Response, NextFunction } from "express";
-import { AuthService } from "./auth.service";
-import { responderOk } from "../../utils/helpers";
-import { RequestAutenticado } from "../../types";
+import { NextFunction, Request, Response } from 'express';
+import { ErrorApi, RequestAutenticado } from '../../types';
 import {
-  LoginDto,
-  RegistrarseDto,
+  generarHtmlVerificacionError,
+  generarHtmlVerificacionExitosa,
+  responderOk,
+} from '../../utils/helpers';
+import {
   CambiarPasswordDto,
-  RefreshTokenDto,
-  SolicitarResetDto,
   ConfirmarResetDto,
-} from "./auth.dto";
+  LoginDto,
+  RefreshTokenDto,
+  RegistrarseDto,
+  SolicitarResetDto,
+} from './auth.dto';
+import { AuthService } from './auth.service';
+
 
 export class AuthController {
   private service: AuthService;
@@ -21,15 +23,8 @@ export class AuthController {
     this.service = new AuthService();
   }
 
-  /**
-   * POST /auth/registro
-   * Registra un nuevo usuario en el sistema.
-   */
-  registrarse = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
+  //registro de usuario, con validación de email único, hashing de contraseña y envío de email de verificación
+  registrarse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const resultado = await this.service.registrarse(req.body as RegistrarseDto);
       responderOk(res, resultado, resultado.mensaje, 201);
@@ -38,69 +33,49 @@ export class AuthController {
     }
   };
 
-  /**
-   * POST /auth/login
-   * Autentica al usuario y retorna los tokens.
-   */
-  login = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
+  //login de usuario, devuelve access token y refresh token
+  login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const resultado = await this.service.login(req.body as LoginDto);
-      responderOk(res, resultado, "Sesión iniciada exitosamente");
+      responderOk(res, resultado, 'Sesión iniciada exitosamente');
     } catch (error) {
       next(error);
     }
   };
 
-  /**
-   * POST /auth/refresh
-   * Genera un nuevo access token usando el refresh token.
-   */
-  refrescarToken = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
+  //renueva el access token usando el refresh token
+  refrescarToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { refreshToken } = req.body as RefreshTokenDto;
       const resultado = await this.service.refrescarToken(refreshToken);
-      responderOk(res, resultado, "Token renovado exitosamente");
+      responderOk(res, resultado, 'Token renovado exitosamente');
     } catch (error) {
       next(error);
     }
   };
 
-  /**
-   * GET /auth/verificar-email/:token
-   * Verifica el email del usuario usando el token recibido por correo.
-   */
-  verificarEmail = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
+  //verifica el email del usuario usando el token de verificación, y devuelve una página HTML con el resultado
+  verificarEmail = async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
       const { token } = req.params as { token: string };
-      const resultado = await this.service.verificarEmail(token);
-      responderOk(res, resultado, resultado.mensaje);
+      await this.service.verificarEmail(token);
+
+      // Devuelve HTML lindo con redirección al login
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(generarHtmlVerificacionExitosa());
     } catch (error) {
-      next(error);
+      // Si hay error, devuelve HTML de error
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+
+      const mensaje =
+        error instanceof ErrorApi ? error.message : 'Ocurrió un error al verificar tu email';
+
+      res.status(400).send(generarHtmlVerificacionError(mensaje));
     }
   };
 
-  /**
-   * PUT /auth/cambiar-password
-   * Cambia la contraseña del usuario autenticado.
-   * Requiere autenticación.
-   */
-  cambiarPassword = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
+  // Cambia la contraseña del usuario autenticado.
+  cambiarPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const resultado = await this.service.cambiarPassword(
@@ -113,38 +88,23 @@ export class AuthController {
     }
   };
 
-  /**
-   * POST /auth/solicitar-reset
-   * Inicia el proceso de reset de contraseña.
-   */
-  solicitarReset = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
+  // Solicita el reset de contraseña, generando un token y enviándolo por email.
+  solicitarReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const resultado = await this.service.solicitarResetPassword(
-        req.body as SolicitarResetDto
-      );
+      const resultado = await this.service.solicitarResetPassword(req.body as SolicitarResetDto);
       responderOk(res, resultado, resultado.mensaje);
     } catch (error) {
       next(error);
     }
   };
 
-  /**
-   * POST /auth/confirmar-reset
-   * Confirma el reset de contraseña con el token recibido por email.
-   */
-  confirmarReset = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
+  // Confirma el reset de contraseña usando el token enviado por email, y actualiza la contraseña.
+  confirmarReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const resultado = await this.service.confirmarResetPassword(
-        req.body as ConfirmarResetDto
-      );
+      const resultado = await this.service.confirmarResetPassword({
+        ...req.body,
+        token: req.params.token, // ← Agregar esto
+      } as ConfirmarResetDto);
       responderOk(res, resultado, resultado.mensaje);
     } catch (error) {
       next(error);

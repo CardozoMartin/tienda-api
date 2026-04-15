@@ -1,25 +1,27 @@
-// Middleware de manejo de errores centralizado.
-// Express lo reconoce como error handler porque recibe 4 parámetros (err, req, res, next).
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { ErrorApi } from "../types";
 import { env } from "../config/env";
+import { logger } from "../utils/logger";
 
-/**
- * Manejador global de errores.
- * Captura todos los errores que llegan via next(error) y los transforma
- * en respuestas JSON con el formato estándar de la API.
- */
 export function manejadorErrores(
   err: unknown,
   req: Request,
   res: Response,
-  _next: NextFunction // Express requiere los 4 parámetros aunque no usemos next
+  _next: NextFunction 
 ): void {
   // Log del error con detalles útiles para debugging
-  console.error(`[ERROR] ${req.method} ${req.path}`, err);
+  if (err instanceof ZodError) {
+    // Si es un ZodError, normalmente es un 400 Bad Request, nivel warn
+    logger.warn(`[ZOD ERROR] ${req.method} ${req.path}`);
+  } else if (err instanceof ErrorApi) {
+    // Errores controlados de negocio
+    logger.warn(`[API ERROR] ${err.codigoHttp} - ${req.method} ${req.path}: ${err.message}`);
+  } else {
+    // Errores inesperados, nivel error
+    logger.error(`[UNHANDLED ERROR] ${req.method} ${req.path}`, err);
+  }
 
-  // ── Error de validación de Zod ──
   // Se produce cuando los datos del request no pasan la validación del schema
   if (err instanceof ZodError) {
     const errores = err.errors.map(
@@ -33,7 +35,7 @@ export function manejadorErrores(
     return;
   }
 
-  // ── Error personalizado de la API ──
+ 
   // Se produce cuando lanzamos ErrorApi desde services o controllers
   if (err instanceof ErrorApi) {
     res.status(err.codigoHttp).json({
@@ -97,13 +99,12 @@ export function manejadorErrores(
   });
 }
 
-/**
- * Middleware para rutas no encontradas (404).
- * Se registra ANTES del manejador de errores y DESPUÉS de todas las rutas.
- */
+// Middleware para manejar rutas no encontradas (404)
 export function noEncontrado(req: Request, res: Response): void {
+  logger.warn(`[404] Ruta no encontrada: ${req.method} ${req.path}`);
   res.status(404).json({
     ok: false,
     mensaje: `Ruta no encontrada: ${req.method} ${req.path}`,
   });
 }
+

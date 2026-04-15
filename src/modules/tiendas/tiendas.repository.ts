@@ -1,17 +1,14 @@
-// Repository de tiendas.
-// Solo acceso a datos, sin lógica de negocio.
-import { prisma } from "../../config/prisma";
-import { calcularSkip } from "../../utils/helpers";
-import { FiltrosTiendasDto, ActualizarTemaDto } from "./tiendas.dto";
+
+import { prisma } from '../../config/prisma';
+import { calcularSkip } from '../../utils/helpers';
+import { ActualizarTemaDto, FiltrosTiendasDto } from './tiendas.dto';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type WhereInput = Record<string, any>;
 
 export class TiendasRepository {
-  /**
-   * Busca una tienda por su slug (identificador único en la URL).
-   * Incluye todas las relaciones para mostrar la tienda completa al público.
-   */
+
+  //Query para obtener las tiendas por su slug eje /Tienda-Martin
   async buscarPorSlug(slug: string): Promise<unknown> {
     return prisma.tienda.findUnique({
       where: { slug },
@@ -21,16 +18,15 @@ export class TiendasRepository {
         temaConfig: true,
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
-        carrusel: { where: { activa: true }, orderBy: { orden: "asc" } },
+        carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+        aboutUs: true,
+        marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
       },
     });
   }
 
-  /**
-   * Busca la tienda de un usuario por su ID de usuario.
-   * Un usuario solo puede tener una tienda (relación @unique).
-   */
+ //Query para obtener la tienda de un usuario autenticado
   async buscarPorUsuarioId(usuarioId: number): Promise<any> {
     return prisma.tienda.findUnique({
       where: { usuarioId },
@@ -40,22 +36,20 @@ export class TiendasRepository {
         temaConfig: true,
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
-        carrusel: { where: { activa: true }, orderBy: { orden: "asc" } },
+        carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+        aboutUs: true,
+        marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
       },
     });
   }
 
-  /**
-   * Busca una tienda por su ID.
-   */
+  //Query para obtener una tienda por su ID, sin incluir datos relacionados
   async buscarPorId(id: number): Promise<any> {
     return prisma.tienda.findUnique({ where: { id } });
   }
 
-  /**
-   * Verifica si un slug ya está en uso. Útil para validar unicidad antes de crear.
-   */
+ //Query para incrementar el contador de vistas de una tienda
   async existeSlug(slug: string, excluirId?: number): Promise<boolean> {
     const tienda = await prisma.tienda.findFirst({
       where: {
@@ -68,10 +62,7 @@ export class TiendasRepository {
     return tienda !== null;
   }
 
-  /**
-   * Crea una nueva tienda con su configuración de tema inicial.
-   * Usamos una transacción para garantizar que ambas operaciones se completen juntas.
-   */
+    //Query para crear una tienda, con transacción para asegurar que se creen también las configuraciones relacionadas
   async crear(datos: {
     usuarioId: number;
     slug: string;
@@ -87,8 +78,8 @@ export class TiendasRepository {
     provincia?: string;
     ciudad?: string;
   }): Promise<unknown> {
-    return prisma.$transaction(async (tx) => {
-      // Creamos la tienda
+    return prisma.$transaction(async (tx: any) => {
+
       const tienda = await tx.tienda.create({ data: datos });
 
       // Creamos la configuración de tema por defecto
@@ -117,20 +108,17 @@ export class TiendasRepository {
           temaConfig: true,
           metodosPago: { include: { metodoPago: true } },
           metodosEntrega: { include: { metodoEntrega: true } },
-          carrusel: { where: { activa: true }, orderBy: { orden: "asc" } },
+          carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+          aboutUs: true,
+          marqueeItems: { orderBy: { orden: 'asc' } },
           _count: { select: { productos: true, resenas: true } },
         },
       });
     });
   }
 
-  /**
-   * Actualiza los datos básicos de una tienda.
-   */
-  async actualizar(
-    id: number,
-    datos: WhereInput
-  ): Promise<unknown> {
+  //Actualiza los datos generales de la tienda, como nombre, descripción, redes sociales, etc. No actualiza configuraciones específicas como tema o métodos de pago/entrega
+  async actualizar(id: number, datos: WhereInput): Promise<unknown> {
     return prisma.tienda.update({
       where: { id },
       data: datos,
@@ -140,16 +128,15 @@ export class TiendasRepository {
         temaConfig: true,
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
-        carrusel: { where: { activa: true }, orderBy: { orden: "asc" } },
+        carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+        aboutUs: true,
+        marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
       },
     });
   }
 
-  /**
-   * Actualiza la configuración de tema de una tienda.
-   * Usa upsert porque la config puede no existir aún.
-   */
+    //Actualiza la configuración de tema de la tienda, como colores, tipografías y secciones visibles. Si no existe una configuración previa, la crea con los datos proporcionados.
   async actualizarTema(tiendaId: number, datos: ActualizarTemaDto) {
     return prisma.tiendaTemaConfig.upsert({
       where: { tiendaId },
@@ -158,9 +145,7 @@ export class TiendasRepository {
     });
   }
 
-  /**
-   * Lista tiendas públicas con filtros y paginación.
-   */
+ //Query para listar tiendas con filtros de búsqueda, paginación y ordenamiento. Solo devuelve tiendas activas y públicas.
   async listar(filtros: FiltrosTiendasDto): Promise<{ datos: unknown[]; total: number }> {
     const where: WhereInput = {
       activa: true,
@@ -189,7 +174,9 @@ export class TiendasRepository {
           temaConfig: true,
           metodosPago: { include: { metodoPago: true } },
           metodosEntrega: { include: { metodoEntrega: true } },
-          carrusel: { where: { activa: true }, orderBy: { orden: "asc" } },
+          carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+          aboutUs: true,
+          marqueeItems: { orderBy: { orden: 'asc' } },
           _count: { select: { productos: true, resenas: true } },
         },
       }),
@@ -199,10 +186,7 @@ export class TiendasRepository {
     return { datos, total };
   }
 
-  /**
-   * Incrementa el contador de vistas de una tienda.
-   * Operación atómica para evitar race conditions.
-   */
+  //Query para incrementar el contador de vistas de una tienda cada vez que se accede a su página pública
   async incrementarVistas(id: number): Promise<void> {
     await prisma.tienda.update({
       where: { id },
@@ -210,13 +194,26 @@ export class TiendasRepository {
     });
   }
 
-  // ── Métodos de pago ──
+  // obtener el catalogo de medoso de pago
 
-  async agregarMetodoPago(
-    tiendaId: number,
-    metodoPagoId: number,
-    detalle?: string
-  ) {
+  async listarCatalogoMetodosPago() {
+    return prisma.metodoPago.findMany({
+      where: { activo: true },
+      orderBy: { orden: 'asc' },
+    });
+  }
+
+  // obtener el catalogo de medoso de entrega
+  async listarCatalogoMetodosEntrega() {
+    return prisma.metodoEntrega.findMany({
+      where: { activo: true },
+      orderBy: { orden: 'asc' },
+    });
+  }
+
+  //Métodos de pago (tienda)
+
+  async agregarMetodoPago(tiendaId: number, metodoPagoId: number, detalle?: string) {
     return prisma.metodoPagoTienda.create({
       data: { tiendaId, metodoPagoId, detalle },
       include: { metodoPago: true },
@@ -229,8 +226,7 @@ export class TiendasRepository {
     });
   }
 
-  // ── Métodos de entrega ──
-
+  //Métodos de entrega
   async agregarMetodoEntrega(
     tiendaId: number,
     metodoEntregaId: number,
@@ -249,7 +245,7 @@ export class TiendasRepository {
     });
   }
 
-  // ── Carrusel ──
+  //Carrusel
 
   async agregarImagenCarrusel(
     tiendaId: number,
@@ -277,5 +273,37 @@ export class TiendasRepository {
         })
       )
     );
+  }
+
+  //Sobre Noisotros
+
+  async buscarAboutUs(tiendaId: number) {
+    return prisma.tiendaAboutUs.findUnique({ where: { tiendaId } });
+  }
+
+  async actualizarAboutUs(tiendaId: number, datos: { titulo?: string; descripcion?: string; direccion?: string; imagenUrl?: string }) {
+    return prisma.tiendaAboutUs.upsert({
+      where: { tiendaId },
+      update: datos,
+      create: { tiendaId, ...datos },
+    });
+  }
+
+  //Slider con frases, marcas o lo que el dueño de la tienda quiera mostrar
+
+  async listarMarquee(tiendaId: number) {
+    return prisma.tiendaMarqueeItem.findMany({
+      where: { tiendaId },
+      orderBy: { orden: 'asc' },
+    });
+  }
+
+  async actualizarMarquee(tiendaId: number, items: Array<{ texto: string; orden: number }>) {
+    return prisma.$transaction([
+      prisma.tiendaMarqueeItem.deleteMany({ where: { tiendaId } }),
+      prisma.tiendaMarqueeItem.createMany({
+        data: items.map((item) => ({ ...item, tiendaId })),
+      }),
+    ]);
   }
 }
