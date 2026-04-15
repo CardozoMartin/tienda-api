@@ -33,12 +33,15 @@ export class TiendasService {
       throw new ErrorApi("Ya tenés una tienda creada. Solo se permite una por cuenta.", 409);
     }
 
-    // Generamos el slug a partir del nombre
-    let slug = generarSlug(datos.nombre);
+    // Si el usuario eligió un slug, lo usamos; si no, lo generamos desde el nombre
+    let slug = datos.slug ? generarSlug(datos.slug) : generarSlug(datos.nombre);
 
-    // Si el slug ya existe, agregamos un sufijo numérico único
+    // Si el slug fue ingresado manualmente, lo validamos y rechazamos si ya existe
     const slugOcupado = await this.repository.existeSlug(slug);
     if (slugOcupado) {
+      if (datos.slug) {
+        throw new ErrorApi(`El slug "${slug}" no está disponible`, 409);
+      }
       slug = generarSlugUnico(datos.nombre);
     }
 

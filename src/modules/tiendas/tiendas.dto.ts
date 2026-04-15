@@ -25,6 +25,13 @@ export const CrearTiendaSchema = z.object({
   whatsapp: z.string().max(30).trim().optional(),
   instagram: z.string().max(100).trim().optional(),
   facebook: z.string().max(100).trim().optional(),
+  slug: z
+    .string()
+    .trim()
+    .min(3, 'El slug debe tener al menos 3 caracteres')
+    .max(60, 'El slug no puede tener más de 60 caracteres')
+    .regex(/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/, 'El slug solo puede contener letras minúsculas, números, guiones y guiones bajos')
+    .optional(),
   sitioWeb: z.string().url('El sitio web debe ser una URL válida').optional(),
   pais: z.string().max(80).trim().optional(),
   provincia: z.string().max(80).trim().optional(),

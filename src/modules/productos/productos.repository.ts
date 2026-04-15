@@ -24,11 +24,20 @@ export class ProductosRepository {
     });
   }
 
-  // Busca un producto por su nombre exacto dentro de una tienda (para evitar duplicados al crear/actualizar)
-  async buscarPorNombre(nombre: string, tiendaId: number) {
+  // Busca un producto por su nombre dentro de una tienda (para evitar duplicados al crear/actualizar)
+  async buscarPorNombre(nombre: string, tiendaId: number, excludeProductoId?: number) {
+    const where: any = {
+      tiendaId,
+      nombre: { equals: nombre.trim(), mode: 'insensitive' },
+    };
+
+    if (excludeProductoId) {
+      where.NOT = { id: excludeProductoId };
+    }
+
     return prisma.producto.findFirst({
-      where: { nombre, tiendaId },
-      include: { id: true } as any,
+      where,
+      select: { id: true },
     });
   }
 

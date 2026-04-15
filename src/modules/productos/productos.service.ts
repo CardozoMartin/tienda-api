@@ -91,6 +91,13 @@ export class ProductosService {
    */
   async crear(usuarioId: number, datos: CrearProductoDto, imagenFile?: Express.Multer.File) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const nombreNormalizado = datos.nombre.trim();
+
+    // Validamos que no exista un producto con el mismo nombre en la tienda.
+    const productoExistente = await this.repository.buscarPorNombre(nombreNormalizado, tienda.id);
+    if (productoExistente) {
+      throw new ErrorApi(`Ya existe un producto con el nombre "${nombreNormalizado}"`, 409);
+    }
 
     // Validamos que precioOferta < precio (doble validación, también está en Zod)
     if (datos.precioOferta && datos.precioOferta >= datos.precio) {
@@ -103,21 +110,43 @@ export class ProductosService {
       imagenPrincipalUrl = await uploadImageToCloudinary(imagenFile.buffer);
     }
 
+    const stock = Number(datos.stock ?? 0);
+    if (Number.isNaN(stock) || stock < 0) {
+      throw new ErrorApi('El stock debe ser un número entero mayor o igual a 0', 400);
+    }
+
+    const tags = Array.from(
+      new Set(
+        (datos.tags || [])
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+      )
+    );
+
+    const variantes = (datos.variantes || []).map((variante) => ({
+      nombre: variante.nombre.trim(),
+      sku: variante.sku?.trim() || undefined,
+      precioExtra: Number(variante.precioExtra ?? 0),
+      imagenUrl: variante.imagenUrl?.trim() || undefined,
+      stock: Number(variante.stock ?? 0),
+      disponible: Boolean(variante.disponible),
+    }));
+
     const nuevoProducto = await this.repository.crear({
       tiendaId: tienda.id,
-      nombre: datos.nombre,
-      descripcion: datos.descripcion,
-      precio: datos.precio,
+      nombre: nombreNormalizado,
+      descripcion: datos.descripcion?.trim(),
+      precio: Number(datos.precio),
       precioOferta:
-        (datos.precioOferta as any) === '' ? undefined : (datos.precioOferta as number | undefined),
-      moneda: datos.moneda,
+        (datos.precioOferta as any) === '' ? undefined : Number(datos.precioOferta),
+      moneda: datos.moneda.trim(),
       imagenPrincipalUrl,
-      categoriaId: (datos.categoriaId as any) === '' ? undefined : datos.categoriaId,
-      disponible: datos.disponible,
-      destacado: datos.destacado,
-      stock: datos.stock,
-      tags: datos.tags,
-      variantes: datos.variantes,
+      categoriaId: (datos.categoriaId as any) === '' ? undefined : Number(datos.categoriaId),
+      disponible: Boolean(datos.disponible),
+      destacado: Boolean(datos.destacado),
+      stock,
+      tags,
+      variantes,
     });
     this.invalidarCacheProductos(tienda.id);
     return nuevoProducto;
@@ -131,9 +160,38 @@ export class ProductosService {
     await this.verificarProductoOFallar(productoId, tienda.id);
 
     const sanitizedData = { ...datos } as any;
+
+    if (sanitizedData.nombre) {
+      sanitizedData.nombre = sanitizedData.nombre.trim();
+      const productoExistente = await this.repository.buscarPorNombre(
+        sanitizedData.nombre,
+        tienda.id,
+        productoId
+      );
+      if (productoExistente) {
+        throw new ErrorApi(`Ya existe un producto con el nombre "${sanitizedData.nombre}"`, 409);
+      }
+    }
+
     if (sanitizedData.precioOferta === '') sanitizedData.precioOferta = undefined;
     if (sanitizedData.categoriaId === '') sanitizedData.categoriaId = undefined;
-    if (sanitizedData.stock !== undefined) sanitizedData.stock = Number(sanitizedData.stock);
+
+    if (sanitizedData.stock !== undefined) {
+      sanitizedData.stock = Number(sanitizedData.stock);
+      if (Number.isNaN(sanitizedData.stock) || sanitizedData.stock < 0) {
+        throw new ErrorApi('El stock debe ser un número entero mayor o igual a 0', 400);
+      }
+    }
+
+    if (sanitizedData.precio !== undefined) {
+      sanitizedData.precio = Number(sanitizedData.precio);
+    }
+    if (sanitizedData.precioOferta !== undefined) {
+      sanitizedData.precioOferta = Number(sanitizedData.precioOferta);
+    }
+    if (sanitizedData.categoriaId !== undefined) {
+      sanitizedData.categoriaId = Number(sanitizedData.categoriaId);
+    }
 
     const actualizado = await this.repository.actualizar(productoId, sanitizedData);
     this.invalidarCacheProductos(tienda.id);
