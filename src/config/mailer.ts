@@ -1,7 +1,7 @@
 // Configuración de Nodemailer para envío de emails.
 // Soporta tanto desarrollo (ethereal) como producción (SMTP personalizado).
-import nodemailer from "nodemailer";
-import { env } from "./env";
+import nodemailer from 'nodemailer';
+import { env } from './env';
 
 // En desarrollo usamos Ethereal Email (sandbox gratuito)
 // En producción usamos SMTP real
@@ -13,7 +13,7 @@ export async function inicializarMailer() {
   if (env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS) {
     transporter = nodemailer.createTransport({
       host: env.SMTP_HOST,
-      port: parseInt(String(env.SMTP_PORT || "587"), 10),
+      port: parseInt(String(env.SMTP_PORT || '587'), 10),
       secure: env.SMTP_SECURE === true,
       auth: {
         user: env.SMTP_USER,
@@ -25,7 +25,7 @@ export async function inicializarMailer() {
     // Crear cuenta de prueba en desarrollo solo si no hay SMTP real
     const testAccount = await nodemailer.createTestAccount();
     transporter = nodemailer.createTransport({
-      host: "smtp.ethereal.email",
+      host: 'smtp.ethereal.email',
       port: 587,
       secure: false,
       auth: {
@@ -33,10 +33,10 @@ export async function inicializarMailer() {
         pass: testAccount.pass,
       },
     });
-    console.log("[MAILER] Usando Ethereal Email (sandbox)");
+    console.log('[MAILER] Usando Ethereal Email (sandbox)');
   } else {
     throw new Error(
-      "[MAILER] Error: En producción necesitás configurar SMTP_HOST, SMTP_USER y SMTP_PASS en .env"
+      '[MAILER] Error: En producción necesitás configurar SMTP_HOST, SMTP_USER y SMTP_PASS en .env'
     );
   }
 }
@@ -48,10 +48,10 @@ export async function inicializarMailer() {
 export async function verificarMailer(): Promise<boolean> {
   try {
     await transporter.verify();
-    console.log("[MAILER] Conexión verificada exitosamente ✅");
+    console.log('[MAILER] Conexión verificada exitosamente ✅');
     return true;
   } catch (error) {
-    console.error("[MAILER] Error verificando conexión:", error);
+    console.error('[MAILER] Error verificando conexión:', error);
     return false;
   }
 }

@@ -3,14 +3,14 @@
 import { Router } from 'express';
 
 import { adminRouter } from './modules/admin/admin.module';
+import aiRouter from './modules/ai/ai.routes';
 import authRouter from './modules/auth/auth.routes';
+import carritoRouter from './modules/carrito/carrito.routes';
 import clientesRouter from './modules/clientes/cliente.routes';
+import pedidosRouter from './modules/pedidos/pedidos.routes';
 import { misProductosRouter, productosPublicosRouter } from './modules/productos/productos.routes';
 import { resenasProductoRouter, resenasTiendaRouter } from './modules/resenas/resena.route';
 import tiendasRouter from './modules/tiendas/tiendas.routes';
-import carritoRouter from './modules/carrito/carrito.routes';
-import pedidosRouter from './modules/pedidos/pedidos.routes';
-import aiRouter from './modules/ai/ai.routes';
 
 const router = Router();
 
@@ -29,8 +29,7 @@ router.use('/ai', aiRouter);
 
 // Ruta de prueba para verificar la integración con Sentry
 router.get('/debug-sentry', function mainHandler() {
-  throw new Error("My first Sentry error!");
+  throw new Error('My first Sentry error!');
 });
 
 export default router;
-

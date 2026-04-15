@@ -1,10 +1,10 @@
 // Middlewares de autenticación y autorización.
 // Se usan en las rutas que requieren que el usuario esté logueado o tenga cierto rol.
-import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { env } from "../config/env";
-import { RequestAutenticado, ErrorApi } from "../types";
-import { RolUsuario } from "@prisma/client";
+import { RolUsuario } from '@prisma/client';
+import { NextFunction, Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import { env } from '../config/env';
+import { ErrorApi, RequestAutenticado } from '../types';
 
 /**
  * Verifica que el request tenga un JWT válido en el header Authorization.
@@ -12,21 +12,17 @@ import { RolUsuario } from "@prisma/client";
  *
  * Uso: router.get("/ruta-protegida", autenticar, controller)
  */
-export function autenticar(
-  req: Request,
-  _res: Response,
-  next: NextFunction
-): void {
+export function autenticar(req: Request, _res: Response, next: NextFunction): void {
   try {
     // Extraemos el token del header "Authorization: Bearer <token>"
-    const authHeader = req.headers["authorization"];
-    if (!authHeader?.startsWith("Bearer ")) {
-      throw new ErrorApi("Token de autenticación no proporcionado", 401);
+    const authHeader = req.headers['authorization'];
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw new ErrorApi('Token de autenticación no proporcionado', 401);
     }
 
-    const token = authHeader.split(" ")[1];
+    const token = authHeader.split(' ')[1];
     if (!token) {
-      throw new ErrorApi("Token de autenticación mal formado", 401);
+      throw new ErrorApi('Token de autenticación mal formado', 401);
     }
 
     // Verificamos y decodificamos el token
@@ -45,11 +41,11 @@ export function autenticar(
   } catch (error) {
     // Convertimos errores específicos de JWT a mensajes descriptivos
     if (error instanceof jwt.TokenExpiredError) {
-      next(new ErrorApi("El token ha expirado", 401));
+      next(new ErrorApi('El token ha expirado', 401));
       return;
     }
     if (error instanceof jwt.JsonWebTokenError) {
-      next(new ErrorApi("Token inválido", 401));
+      next(new ErrorApi('Token inválido', 401));
       return;
     }
     next(error);
@@ -61,38 +57,34 @@ export function autenticar(
  * El JWT del cliente contiene { id, email, tiendaId, tipo: 'cliente' }
  * y se adjunta en req.clienteAutenticado para distinguirlo del usuario admin.
  */
-export function autenticarCliente(
-  req: Request,
-  _res: Response,
-  next: NextFunction
-): void {
+export function autenticarCliente(req: Request, _res: Response, next: NextFunction): void {
   try {
-    const authHeader = req.headers["authorization"];
-    if (!authHeader?.startsWith("Bearer ")) {
-      throw new ErrorApi("Token de autenticación no proporcionado", 401);
+    const authHeader = req.headers['authorization'];
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw new ErrorApi('Token de autenticación no proporcionado', 401);
     }
 
-    const token = authHeader.split(" ")[1];
+    const token = authHeader.split(' ')[1];
     if (!token) {
-      throw new ErrorApi("Token de autenticación mal formado", 401);
+      throw new ErrorApi('Token de autenticación mal formado', 401);
     }
 
     const payload = jwt.verify(token, env.JWT_SECRET) as any;
 
     // Validar que sea un token de cliente
     if (payload.tipo !== 'cliente') {
-      throw new ErrorApi("Token no válido para este endpoint", 403);
+      throw new ErrorApi('Token no válido para este endpoint', 403);
     }
 
     (req as any).clienteAutenticado = payload;
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
-      next(new ErrorApi("El token ha expirado", 401));
+      next(new ErrorApi('El token ha expirado', 401));
       return;
     }
     if (error instanceof jwt.JsonWebTokenError) {
-      next(new ErrorApi("Token inválido", 401));
+      next(new ErrorApi('Token inválido', 401));
       return;
     }
     next(error);
@@ -105,24 +97,20 @@ export function autenticarCliente(
  * A diferencia de autenticar, no lanza error si no hay token o es inválido,
  * permitiendo usuarios invitados.
  */
-export function autenticarOpcional(
-  req: Request,
-  _res: Response,
-  next: NextFunction
-): void {
+export function autenticarOpcional(req: Request, _res: Response, next: NextFunction): void {
   try {
-    const authHeader = req.headers["authorization"];
-    if (!authHeader?.startsWith("Bearer ")) {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader?.startsWith('Bearer ')) {
       return next();
     }
 
-    const token = authHeader.split(" ")[1];
+    const token = authHeader.split(' ')[1];
     if (!token) {
       return next();
     }
 
     const payload = jwt.verify(token, env.JWT_SECRET) as any;
-    
+
     // Normalizamos el payload para que siempre tenga 'sub' (ID) y 'rol'
     // Los tokens de cliente vienen con { id, tipo: 'cliente' }
     if (payload.tipo === 'cliente') {
@@ -154,17 +142,12 @@ export function autorizar(...rolesPermitidos: RolUsuario[]) {
 
     // Este middleware debe usarse DESPUÉS de autenticar()
     if (!usuario) {
-      next(new ErrorApi("No autenticado", 401));
+      next(new ErrorApi('No autenticado', 401));
       return;
     }
 
     if (!rolesPermitidos.includes(usuario.rol)) {
-      next(
-        new ErrorApi(
-          `Acceso denegado. Roles requeridos: ${rolesPermitidos.join(", ")}`,
-          403
-        )
-      );
+      next(new ErrorApi(`Acceso denegado. Roles requeridos: ${rolesPermitidos.join(', ')}`, 403));
       return;
     }
 
