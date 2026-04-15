@@ -1,5 +1,4 @@
-// Rutas del módulo de tiendas.
-// Separamos rutas públicas de las protegidas (owner).
+
 import { RolUsuario } from '@prisma/client';
 import { Router } from 'express';
 import { autenticar, autorizar } from '../../middleware/auth.middleware';
@@ -13,16 +12,18 @@ import {
   AgregarMetodoPagoSchema,
   CrearTiendaSchema,
   FiltrosTiendasSchema,
+  ActualizarAboutUsSchema,
+  ActualizarMarqueeSchema,
 } from './tiendas.dto';
-import { uploadMultiple } from '@/config/multer.config';
+import { uploadMultiple, uploadSingle } from '@/config/multer.config';
 
 
 const router = Router();
 const controller = new TiendasController();
 
-// ─────────────────────────────────────────────
+
 // RUTAS PÚBLICAS
-// ─────────────────────────────────────────────
+
 
 // Directorio de tiendas
 router.get('/', validar(FiltrosTiendasSchema, 'query'), controller.listar);
@@ -31,11 +32,11 @@ router.get('/', validar(FiltrosTiendasSchema, 'query'), controller.listar);
 router.get('/metodos-pago', controller.listarMetodosPago);
 router.get('/metodos-entrega', controller.listarMetodosEntrega);
 
-// ─────────────────────────────────────────────
+
 // RUTAS PROTEGIDAS - OWNER
 // Requieren autenticación + rol OWNER o ADMIN
 // IMPORTANTE: Deben ir ANTES de /:slug para no ser capturadas como slug
-// ─────────────────────────────────────────────
+
 
 const soloOwner = [autenticar, autorizar(RolUsuario.OWNER, RolUsuario.ADMIN)];
 
@@ -81,6 +82,25 @@ router.post(
 );
 router.delete('/mi-tienda/carrusel/:imagenId', ...soloOwner, controller.eliminarImagenCarrusel);
 router.put('/mi-tienda/carrusel/reordenar', ...soloOwner, controller.reordenarCarrusel);
+
+// About Us
+router.get('/mi-tienda/about-us', ...soloOwner, controller.obtenerAboutUs);
+router.put(
+  '/mi-tienda/about-us',
+  ...soloOwner,
+  validar(ActualizarAboutUsSchema),
+  controller.actualizarAboutUs
+);
+router.post('/mi-tienda/about-us/imagen', ...soloOwner, uploadSingle, controller.subirImagenAboutUs);
+
+// Marquee
+router.get('/mi-tienda/marquee', ...soloOwner, controller.obtenerMarquee);
+router.put(
+  '/mi-tienda/marquee',
+  ...soloOwner,
+  validar(ActualizarMarqueeSchema),
+  controller.actualizarMarquee
+);
 
 // Vista pública de una tienda
 // IMPORTANTE: Esta ruta debe ir DESPUÉS de /mi-tienda para no capturarla como slug

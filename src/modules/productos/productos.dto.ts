@@ -15,6 +15,7 @@ const VarianteSchema = z.object({
   // precioExtra puede ser 0 (sin costo adicional) o positivo
   precioExtra: z.coerce.number().min(0).default(0),
   imagenUrl: z.string().url('URL de imagen inválida').optional(),
+  stock: z.coerce.number().int().min(0).default(0),
   disponible: z.coerce.boolean().default(true),
 });
 
@@ -56,6 +57,7 @@ const ProductoBaseSchema = z.object({
 
   disponible: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(true)),
   destacado: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(false)),
+  stock: z.coerce.number().int().min(0).default(0),
 
   // Al usar FormData, tags puede venir como una sola string separada por comas or multiple fields.
   // Pero aquí el backend lo espera como array. Multer no lo parsea a array automáticamente si no se envía repetido.
@@ -129,7 +131,7 @@ export type AgregarImagenDto = z.infer<typeof AgregarImagenSchema>;
 
 export const FiltrosProductosSchema = z.object({
   pagina: z.coerce.number().int().positive().default(1),
-  limite: z.coerce.number().int().positive().max(100).default(20),
+  limite: z.coerce.number().int().positive().max(1000).default(20),
   busqueda: z.string().trim().optional(),
   categoriaId: z.coerce.number().int().positive().optional(),
   disponible: z.coerce.boolean().optional(),
@@ -137,6 +139,7 @@ export const FiltrosProductosSchema = z.object({
   tags: z.string().optional(), // Tags separados por coma: "ropa,verano"
   precioMin: z.coerce.number().min(0).optional(),
   precioMax: z.coerce.number().min(0).optional(),
+  bajoStock: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().optional()),
   orden: z.enum(['nombre', 'precio', 'vistas', 'creadoEn', 'destacado']).default('creadoEn'),
   direccion: z.enum(['asc', 'desc']).default('desc'),
 });

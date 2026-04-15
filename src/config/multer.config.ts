@@ -8,11 +8,15 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB límite
   },
   fileFilter: (_req, file, cb) => {
-    // Verificar que sea una imagen
-    if (file.mimetype.startsWith('image/')) {
+    // Permitir imágenes y archivos Excel
+    if (
+      file.mimetype.startsWith('image/') ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.mimetype === 'application/vnd.ms-excel'
+    ) {
       cb(null, true);
     } else {
-      cb(new Error('Solo se permiten archivos de imagen'));
+      cb(new Error('Solo se permiten imágenes o archivos Excel (.xlsx, .xls)'));
     }
   },
 });

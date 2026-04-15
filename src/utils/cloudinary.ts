@@ -1,7 +1,9 @@
 import cloudinary from '../config/cloudinary.config';
+import { logger } from './logger';
 
 export const uploadImageToCloudinary = async (buffer: Buffer): Promise<string> => {
-  console.log('DEBUG uploadImageToCloudinary buffer length:', buffer.length);
+  logger.debug(`[CLOUDINARY] Iniciando subida de imagen (${buffer.length} bytes)`);
+  
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
@@ -10,14 +12,23 @@ export const uploadImageToCloudinary = async (buffer: Buffer): Promise<string> =
       },
       (error, result) => {
         if (error) {
-          console.error('DEBUG Cloudinary upload error:', error);
+          logger.error('[CLOUDINARY] Error al subir imagen:', error);
           reject(error);
         } else {
-          console.log('DEBUG Cloudinary upload result:', result);
-          resolve(result?.secure_url || '');
+          // Cloudinary URL base
+          let url = result?.secure_url || '';
+          
+          // Inyectamos directivas de auto-optimización (WebP/AVIF y calidad inteligente)
+          if (url.includes('/upload/')) {
+            url = url.replace('/upload/', '/upload/f_auto,q_auto/');
+          }
+          
+          logger.debug(`[CLOUDINARY] Imagen subida exitosamente: ${url}`);
+          resolve(url);
         }
       }
     );
     stream.end(buffer);
   });
 };
+

@@ -1,6 +1,3 @@
-// Repository de autenticación.
-// Responsabilidad única: operaciones de DB relacionadas con auth.
-// No contiene lógica de negocio, solo acceso a datos.
 import { RolUsuario } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 

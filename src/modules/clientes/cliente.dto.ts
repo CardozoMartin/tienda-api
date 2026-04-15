@@ -79,3 +79,34 @@ export interface LoginResponse {
   emailVerificado: boolean;
   token: string;
 }
+
+// ─────────────────────────────────────────────
+// SOLICITAR RESET PASSWORD
+// ─────────────────────────────────────────────
+export const SolicitarResetPasswordClienteSchema = z
+  .object({
+    tiendaId: z.number().int().positive(),
+    email: z.string().min(1, 'Email es requerido').email('Email inválido').toLowerCase().trim(),
+  })
+  .strict();
+
+export type SolicitarResetPasswordClienteInput = z.infer<typeof SolicitarResetPasswordClienteSchema>;
+
+// ─────────────────────────────────────────────
+// CONFIRMAR RESET PASSWORD
+// ─────────────────────────────────────────────
+export const ConfirmarResetPasswordClienteSchema = z
+  .object({
+    token: z.string().min(1, 'Token es requerido'),
+    passwordNueva: z
+      .string()
+      .min(8, 'Contraseña mínimo 8 caracteres')
+      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Debe contener mayúscula, minúscula y número'),
+    passwordConfirmar: z.string(),
+  })
+  .refine((data) => data.passwordNueva === data.passwordConfirmar, {
+    message: 'Las contraseñas no coinciden',
+    path: ['passwordConfirmar'],
+  });
+
+export type ConfirmarResetPasswordClienteInput = z.infer<typeof ConfirmarResetPasswordClienteSchema>;

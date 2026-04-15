@@ -1,6 +1,6 @@
 // Controller de tiendas.
 import { NextFunction, Request, Response } from 'express';
-import { RequestAutenticado } from '../../types';
+import { ErrorApi, RequestAutenticado } from '../../types';
 import { responderOk, responderPaginado } from '../../utils/helpers';
 import {
   ActualizarTemaDto,
@@ -10,6 +10,8 @@ import {
   AgregarMetodoPagoDto,
   CrearTiendaDto,
   FiltrosTiendasDto,
+  ActualizarAboutUsDto,
+  ActualizarMarqueeDto,
 } from './tiendas.dto';
 import { TiendasService } from './tiendas.service';
 
@@ -227,6 +229,80 @@ export class TiendasController {
       const orden = req.body as Array<{ id: number; orden: number }>;
       await this.service.reordenarCarrusel(usuarioId, orden);
       responderOk(res, null, 'Orden del carrusel actualizado');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ── About Us ──
+
+  /**
+   * GET /tiendas/mi-tienda/about-us
+   */
+  obtenerAboutUs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const aboutUs = await this.service.obtenerAboutUs(usuarioId);
+      responderOk(res, aboutUs, 'Información "Sobre Nosotros" obtenida');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PUT /tiendas/mi-tienda/about-us
+   */
+  actualizarAboutUs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const datos = req.body as ActualizarAboutUsDto;
+      const resultado = await this.service.actualizarAboutUs(usuarioId, datos);
+      responderOk(res, resultado, 'Información "Sobre Nosotros" actualizada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /tiendas/mi-tienda/about-us/imagen
+   */
+  subirImagenAboutUs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const file = req.file as Express.Multer.File;
+      if (!file) throw new ErrorApi('No se subió ninguna imagen', 400);
+
+      const resultado = await this.service.subirImagenAboutUs(usuarioId, file);
+      responderOk(res, resultado, 'Imagen de "Sobre Nosotros" actualizada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ── Marquee ──
+
+  /**
+   * GET /tiendas/mi-tienda/marquee
+   */
+  obtenerMarquee = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const marquee = await this.service.obtenerMarquee(usuarioId);
+      responderOk(res, marquee, 'Items del carrusel de marcas obtenidos');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PUT /tiendas/mi-tienda/marquee
+   */
+  actualizarMarquee = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const datos = req.body as ActualizarMarqueeDto;
+      const resultado = await this.service.actualizarMarquee(usuarioId, datos);
+      responderOk(res, resultado, 'Items del carrusel de marcas actualizados');
     } catch (error) {
       next(error);
     }

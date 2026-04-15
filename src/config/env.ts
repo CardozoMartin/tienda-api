@@ -1,80 +1,64 @@
-// Centraliza y valida todas las variables de entorno.
-// Si falta una variable crítica, el servidor falla en el arranque (fail-fast).
+// Centraliza y valida todas las variables de entorno usando Zod.
+// Si falta una variable crítica o el formato es inválido, el servidor fallará al arrancar.
 import "dotenv/config";
+import { z } from "zod";
 
-/**
- * Obtiene una variable de entorno requerida.
- * Lanza un error si no está definida, evitando errores silenciosos en runtime.
- */
-function requerida(nombre: string): string {
-  const valor = process.env[nombre];
-  if (!valor) {
-    throw new Error(`Variable de entorno requerida no encontrada: ${nombre}`);
-  }
-  return valor;
-}
+const envSchema = z.object({
+  // Entorno de ejecución
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  PORT: z.coerce.number().default(3000),
+  API_PREFIX: z.string().default("/api/v1"),
 
-/**
- * Obtiene una variable de entorno opcional con valor por defecto.
- */
-function opcional(nombre: string, porDefecto: string): string {
-  return process.env[nombre] ?? porDefecto;
+  // Base de datos
+  DATABASE_URL: z.string().url("DATABASE_URL debe ser una URL válida"),
+
+  // JWT
+  JWT_SECRET: z.string().min(8, "JWT_SECRET debe tener al menos 8 caracteres"),
+  JWT_EXPIRES_IN: z.string().default("7d"),
+  JWT_REFRESH_SECRET: z.string().min(8, "JWT_REFRESH_SECRET debe tener al menos 8 caracteres"),
+  JWT_REFRESH_EXPIRES_IN: z.string().default("30d"),
+
+  // CORS
+  CORS_ORIGIN: z.string().default("http://localhost:5173"),
+
+  // Rate limiting
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
+  RATE_LIMIT_MAX: z.coerce.number().default(100),
+
+  // Email SMTP
+  SMTP_HOST: z.string().optional().default(""),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_SECURE: z.coerce.string().transform((val) => val === "true").default("false"),
+  SMTP_USER: z.string().optional().default(""),
+  SMTP_PASS: z.string().optional().default(""),
+  MAIL_FROM: z.string().email().optional().default("noreply@tienda.local"),
+
+  // Frontend & Cloudinary
+  FRONTEND_URL: z.string().url().default("http://localhost:5173"),
+  CLOUD_NAME: z.string().optional().default(""),
+  CLOUD_API_KEY: z.string().optional().default(""),
+  CLOUD_API_SECRET: z.string().optional().default(""),
+
+  // Sentry
+  SENTRY_DSN: z.string().optional().default(""),
+});
+
+
+// Validamos el objeto process.env contra el esquema
+const resultado = envSchema.safeParse(process.env);
+
+if (!resultado.success) {
+  console.error("❌ Error de configuración en variables de entorno:");
+  console.error(resultado.error.flatten().fieldErrors);
+  process.exit(1);
 }
 
 export const env = {
-  // Entorno de ejecución
-  NODE_ENV: opcional("NODE_ENV", "development"),
-  PORT: parseInt(opcional("PORT", "3000"), 10),
-  API_PREFIX: opcional("API_PREFIX", "/api/v1"),
-
-  // Base de datos
-  DATABASE_URL: requerida("DATABASE_URL"),
-
-  // JWT - Tokens de acceso (corta duración)
-  JWT_SECRET: requerida("JWT_SECRET"),
-  JWT_EXPIRES_IN: opcional("JWT_EXPIRES_IN", "7d"),
-
-  // JWT - Tokens de refresco (larga duración)
-  JWT_REFRESH_SECRET: requerida("JWT_REFRESH_SECRET"),
-  JWT_REFRESH_EXPIRES_IN: opcional("JWT_REFRESH_EXPIRES_IN", "30d"),
-
-  // CORS
-  CORS_ORIGIN: opcional("CORS_ORIGIN", "http://localhost:5173"),
-
-  // Rate limiting: 100 requests por 15 minutos por defecto
-  RATE_LIMIT_WINDOW_MS: parseInt(opcional("RATE_LIMIT_WINDOW_MS", "900000"), 10),
-  RATE_LIMIT_MAX: parseInt(opcional("RATE_LIMIT_MAX", "100"), 10),
-
-  // Email SMTP (opcional - si no se configura, se usa modo desarrollo/test)
-  SMTP_HOST: opcional("SMTP_HOST", ""),
-  SMTP_PORT: opcional("SMTP_PORT", "587"),
-  SMTP_SECURE: opcional("SMTP_SECURE", "false"),
-  SMTP_USER: opcional("SMTP_USER", ""),
-  SMTP_PASS: opcional("SMTP_PASS", ""),
-  MAIL_FROM: opcional("MAIL_FROM", "noreply@tienda.local"),
-
-  // Frontend URL para redirecciones
-  FRONTEND_URL: opcional("FRONTEND_URL", "http://localhost:5173"),
-
-  // Cloudinary - para upload de imágenes
-  CLOUD_NAME: opcional("CLOUD_NAME", ""),
-  CLOUD_API_KEY: opcional("CLOUD_API_KEY", ""),
-  CLOUD_API_SECRET: opcional("CLOUD_API_SECRET", ""),
-
-  // Helpers de entorno
-  esDevelopment: opcional("NODE_ENV", "development") === "development",
-  esProduccion: opcional("NODE_ENV", "development") === "production",
+  ...resultado.data,
+  esDevelopment: resultado.data.NODE_ENV === "development",
+  esProduccion: resultado.data.NODE_ENV === "production",
+  esTest: resultado.data.NODE_ENV === "test",
 } as const;
 
-// Exportamos también una función que retorna true si el entorno es válido
-// para usarla en chequeos puntuales
-export function esEntornoValido(): boolean {
-  try {
-    requerida("DATABASE_URL");
-    requerida("JWT_SECRET");
-    requerida("JWT_REFRESH_SECRET");
-    return true;
-  } catch {
-    return false;
-  }
-};
+export type Env = z.infer<typeof envSchema>;
+

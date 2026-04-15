@@ -6,8 +6,11 @@ import { adminRouter } from './modules/admin/admin.module';
 import authRouter from './modules/auth/auth.routes';
 import clientesRouter from './modules/clientes/cliente.routes';
 import { misProductosRouter, productosPublicosRouter } from './modules/productos/productos.routes';
-import { resenasProductoRouter, resenasTiendaRouter } from './modules/resenas/resenas.module';
+import { resenasProductoRouter, resenasTiendaRouter } from './modules/resenas/resena.route';
 import tiendasRouter from './modules/tiendas/tiendas.routes';
+import carritoRouter from './modules/carrito/carrito.routes';
+import pedidosRouter from './modules/pedidos/pedidos.routes';
+import aiRouter from './modules/ai/ai.routes';
 
 const router = Router();
 
@@ -19,5 +22,15 @@ router.use('/mis-productos', misProductosRouter);
 router.use('/tiendas/:tiendaId/resenas', resenasTiendaRouter);
 router.use('/mis-productos/:productoId/resenas', resenasProductoRouter);
 router.use('/admin', adminRouter);
+router.use('/carrito', carritoRouter);
+router.use('/tiendas/:tiendaId/pedidos', pedidosRouter);
+router.use('/pedidos', pedidosRouter); // Para listar todos o por filtros desde el dashboard
+router.use('/ai', aiRouter);
+
+// Ruta de prueba para verificar la integración con Sentry
+router.get('/debug-sentry', function mainHandler(req, res) {
+  throw new Error("My first Sentry error!");
+});
 
 export default router;
+

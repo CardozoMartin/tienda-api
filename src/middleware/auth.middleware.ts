@@ -30,7 +30,13 @@ export function autenticar(
     }
 
     // Verificamos y decodificamos el token
-    const payload = jwt.verify(token, env.JWT_SECRET) as unknown as JwtPayload;
+    const payload = jwt.verify(token, env.JWT_SECRET) as any;
+
+    // Normalizamos el payload para clientes
+    if (payload.tipo === 'cliente') {
+      payload.sub = payload.id;
+      payload.rol = 'CLIENT';
+    }
 
     // Adjuntamos el payload al request para que los siguientes middlewares lo usen
     (req as RequestAutenticado).usuario = payload;
@@ -47,6 +53,90 @@ export function autenticar(
       return;
     }
     next(error);
+  }
+}
+
+/**
+ * Middleware para autenticar CLIENTES de tienda.
+ * El JWT del cliente contiene { id, email, tiendaId, tipo: 'cliente' }
+ * y se adjunta en req.clienteAutenticado para distinguirlo del usuario admin.
+ */
+export function autenticarCliente(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void {
+  try {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw new ErrorApi("Token de autenticación no proporcionado", 401);
+    }
+
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      throw new ErrorApi("Token de autenticación mal formado", 401);
+    }
+
+    const payload = jwt.verify(token, env.JWT_SECRET) as any;
+
+    // Validar que sea un token de cliente
+    if (payload.tipo !== 'cliente') {
+      throw new ErrorApi("Token no válido para este endpoint", 403);
+    }
+
+    (req as any).clienteAutenticado = payload;
+    next();
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      next(new ErrorApi("El token ha expirado", 401));
+      return;
+    }
+    if (error instanceof jwt.JsonWebTokenError) {
+      next(new ErrorApi("Token inválido", 401));
+      return;
+    }
+    next(error);
+  }
+}
+
+/**
+ * Verifica si el request tiene un JWT válido en el header Authorization.
+ * Si es válido, adjunta el payload decodificado en req.usuario.
+ * A diferencia de autenticar, no lanza error si no hay token o es inválido,
+ * permitiendo usuarios invitados.
+ */
+export function autenticarOpcional(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void {
+  try {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader?.startsWith("Bearer ")) {
+      return next();
+    }
+
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return next();
+    }
+
+    const payload = jwt.verify(token, env.JWT_SECRET) as any;
+    
+    // Normalizamos el payload para que siempre tenga 'sub' (ID) y 'rol'
+    // Los tokens de cliente vienen con { id, tipo: 'cliente' }
+    if (payload.tipo === 'cliente') {
+      payload.sub = payload.id;
+      payload.rol = 'CLIENT';
+    }
+
+    (req as RequestAutenticado).usuario = payload;
+
+    next();
+  } catch (error) {
+    // Ignoramos errores para permitir invitados, pero limpiamos req.usuario si el token era inválido
+    (req as any).usuario = undefined;
+    next();
   }
 }
 

@@ -44,18 +44,17 @@ jest.mock('../auth.service', () => ({
 describe('AuthController', () => {
   let app: Application;
 
-  // ✅ FIX CRÍTICO: crear la app UNA sola vez, no en cada request
+ // crear la app antes de correr los tests, para usar `request(app)`
   beforeAll(() => {
     app = crearApp();
   });
 
-  // ✅ Cerrar handles abiertos para evitar el warning del worker
+  // Cerrar handles abiertos para evitar el warning del worker
   afterAll(async () => {
     await new Promise<void>((resolve) => setTimeout(resolve, 200));
   });
 
-  // ─── REGISTRO ────────────────────────────────────────────
-
+ //Registro de usuario, con validación de email único, hashing de contraseña y envío de email de verificación
   describe('POST /api/v1/auth/registro', () => {
     it('debe registrar un usuario y retornar 201', async () => {
       // ✅ Ahora usamos `app` en lugar de `crearApp`
@@ -93,8 +92,7 @@ describe('AuthController', () => {
     });
   });
 
-  // ─── LOGIN ────────────────────────────────────────────
-
+ //Login de usuario, devuelve access token y refresh token
   describe('POST /api/v1/auth/login', () => {
     it('debe retornar tokens con credenciales válidas', async () => {
       const res = await request(app).post('/api/v1/auth/login').send({
@@ -119,8 +117,7 @@ describe('AuthController', () => {
     });
   });
 
-  // ─── SOLICITAR RESET ────────────────────────────────────────────
-
+  //Solicitar reset de contraseña, con validación de email y envío de email con instrucciones
   describe('POST /api/v1/auth/solicitar-reset', () => {
     it('debe retornar 200 con email válido', async () => {
       const res = await request(app)
@@ -142,8 +139,7 @@ describe('AuthController', () => {
     });
   });
 
-  // ─── CONFIRMAR RESET ────────────────────────────────────────────
-
+  //Confirmar reset de contraseña, con validación de token de reset y nueva contraseña
   describe('POST /api/v1/auth/confirmar-reset/:token', () => {
     it('debe retornar 200 con token y passwords válidos', async () => {
       const res = await request(app).post('/api/v1/auth/confirmar-reset/token-valido-123').send({
@@ -177,8 +173,7 @@ describe('AuthController', () => {
     });
   });
 
-  // ─── VERIFICAR EMAIL ────────────────────────────────────────────
-
+  //Verificar el email del usuario usando el token de verificación, y devuelve una página HTML con el resultado
   describe('GET /api/v1/auth/verificar-email/:token', () => {
     it('debe retornar HTML con token válido', async () => {
       const res = await request(app).get('/api/v1/auth/verificar-email/token-valido-123');

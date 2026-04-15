@@ -13,6 +13,7 @@ import {
   FiltrosProductosDto,
 } from './productos.dto';
 import { ProductosRepository } from './productos.repository';
+import { cacheService } from '../../utils/cache';
 
 export class ProductosService {
   private repository: ProductosRepository;
@@ -28,8 +29,15 @@ export class ProductosService {
    * Solo muestra productos disponibles.
    */
   async listarPublicos(tiendaId: number, filtros: FiltrosProductosDto) {
+    const cacheKey = `productos_tienda_${tiendaId}_publicos_${JSON.stringify(filtros)}`;
+    const cached = cacheService.get(cacheKey);
+    if (cached) return cached;
+
     const { datos, total } = await this.repository.listar(tiendaId, filtros, true);
-    return construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    const resultado = construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    
+    cacheService.set(cacheKey, resultado);
+    return resultado;
   }
 
   /**
@@ -45,6 +53,14 @@ export class ProductosService {
    * Obtiene un producto por ID para vista pública.
    */
   async obtenerPublico(tiendaId: number, productoId: number) {
+    const cacheKey = `productos_tienda_${tiendaId}_detalle_${productoId}`;
+    const cached = cacheService.get(cacheKey);
+    if (cached) {
+      // Incrementamos vistas de forma asíncrona
+      this.repository.incrementarVistas(productoId).catch(console.error);
+      return cached;
+    }
+
     const producto = await this.repository.buscarPorId(productoId, tiendaId);
     if (!producto || !producto.disponible) {
       throw new ErrorApi('Producto no encontrado', 404);
@@ -53,6 +69,7 @@ export class ProductosService {
     // Incrementamos vistas de forma asíncrona
     this.repository.incrementarVistas(productoId).catch(console.error);
 
+    cacheService.set(cacheKey, producto);
     return producto;
   }
 
@@ -74,6 +91,13 @@ export class ProductosService {
    */
   async crear(usuarioId: number, datos: CrearProductoDto, imagenFile?: Express.Multer.File) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const nombreNormalizado = datos.nombre.trim();
+
+    // Validamos que no exista un producto con el mismo nombre en la tienda.
+    const productoExistente = await this.repository.buscarPorNombre(nombreNormalizado, tienda.id);
+    if (productoExistente) {
+      throw new ErrorApi(`Ya existe un producto con el nombre "${nombreNormalizado}"`, 409);
+    }
 
     // Validamos que precioOferta < precio (doble validación, también está en Zod)
     if (datos.precioOferta && datos.precioOferta >= datos.precio) {
@@ -86,21 +110,46 @@ export class ProductosService {
       imagenPrincipalUrl = await uploadImageToCloudinary(imagenFile.buffer);
     }
 
-    return this.repository.crear({
+    const stock = Number(datos.stock ?? 0);
+    if (Number.isNaN(stock) || stock < 0) {
+      throw new ErrorApi('El stock debe ser un número entero mayor o igual a 0', 400);
+    }
+
+    const tags = Array.from(
+      new Set(
+        (datos.tags || [])
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+      )
+    );
+
+    const variantes = (datos.variantes || []).map((variante) => ({
+      nombre: variante.nombre.trim(),
+      sku: variante.sku?.trim() || undefined,
+      precioExtra: Number(variante.precioExtra ?? 0),
+      imagenUrl: variante.imagenUrl?.trim() || undefined,
+      stock: Number(variante.stock ?? 0),
+      disponible: Boolean(variante.disponible),
+    }));
+
+    const nuevoProducto = await this.repository.crear({
       tiendaId: tienda.id,
-      nombre: datos.nombre,
-      descripcion: datos.descripcion,
-      precio: datos.precio,
+      nombre: nombreNormalizado,
+      descripcion: datos.descripcion?.trim(),
+      precio: Number(datos.precio),
       precioOferta:
-        (datos.precioOferta as any) === '' ? undefined : (datos.precioOferta as number | undefined),
-      moneda: datos.moneda,
+        (datos.precioOferta as any) === '' ? undefined : Number(datos.precioOferta),
+      moneda: datos.moneda.trim(),
       imagenPrincipalUrl,
-      categoriaId: (datos.categoriaId as any) === '' ? undefined : datos.categoriaId,
-      disponible: datos.disponible,
-      destacado: datos.destacado,
-      tags: datos.tags,
-      variantes: datos.variantes,
+      categoriaId: (datos.categoriaId as any) === '' ? undefined : Number(datos.categoriaId),
+      disponible: Boolean(datos.disponible),
+      destacado: Boolean(datos.destacado),
+      stock,
+      tags,
+      variantes,
     });
+    this.invalidarCacheProductos(tienda.id);
+    return nuevoProducto;
   }
 
   /**
@@ -111,10 +160,42 @@ export class ProductosService {
     await this.verificarProductoOFallar(productoId, tienda.id);
 
     const sanitizedData = { ...datos } as any;
+
+    if (sanitizedData.nombre) {
+      sanitizedData.nombre = sanitizedData.nombre.trim();
+      const productoExistente = await this.repository.buscarPorNombre(
+        sanitizedData.nombre,
+        tienda.id,
+        productoId
+      );
+      if (productoExistente) {
+        throw new ErrorApi(`Ya existe un producto con el nombre "${sanitizedData.nombre}"`, 409);
+      }
+    }
+
     if (sanitizedData.precioOferta === '') sanitizedData.precioOferta = undefined;
     if (sanitizedData.categoriaId === '') sanitizedData.categoriaId = undefined;
 
-    return this.repository.actualizar(productoId, sanitizedData);
+    if (sanitizedData.stock !== undefined) {
+      sanitizedData.stock = Number(sanitizedData.stock);
+      if (Number.isNaN(sanitizedData.stock) || sanitizedData.stock < 0) {
+        throw new ErrorApi('El stock debe ser un número entero mayor o igual a 0', 400);
+      }
+    }
+
+    if (sanitizedData.precio !== undefined) {
+      sanitizedData.precio = Number(sanitizedData.precio);
+    }
+    if (sanitizedData.precioOferta !== undefined) {
+      sanitizedData.precioOferta = Number(sanitizedData.precioOferta);
+    }
+    if (sanitizedData.categoriaId !== undefined) {
+      sanitizedData.categoriaId = Number(sanitizedData.categoriaId);
+    }
+
+    const actualizado = await this.repository.actualizar(productoId, sanitizedData);
+    this.invalidarCacheProductos(tienda.id);
+    return actualizado;
   }
 
   /**
@@ -123,7 +204,21 @@ export class ProductosService {
   async eliminar(usuarioId: number, productoId: number): Promise<void> {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
+
+    // Verificamos si el producto tiene pedidos asociados para no romper la integridad de datos
+    const tienePedidos = await prisma.pedidoItem.count({
+      where: { productoId },
+    });
+
+    if (tienePedidos > 0) {
+      throw new ErrorApi(
+        'No se puede eliminar este producto porque ya tiene pedidos asociados. Podes "Ocultarlo" para que deje de estar disponible en la tienda.',
+        400
+      );
+    }
+
     await this.repository.eliminar(productoId);
+    this.invalidarCacheProductos(tienda.id);
   }
 
   /**
@@ -133,6 +228,7 @@ export class ProductosService {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
     await this.repository.sincronizarTags(productoId, tags);
+    this.invalidarCacheProductos(tienda.id);
   }
 
   // ── Imágenes ──
@@ -161,13 +257,16 @@ export class ProductosService {
       imagenUrl = await uploadImageToCloudinary(file.buffer);
     }
 
-    return this.repository.agregarImagen(productoId, imagenUrl, datos.orden);
+    const agregada = await this.repository.agregarImagen(productoId, imagenUrl, datos.orden);
+    this.invalidarCacheProductos(tienda.id);
+    return agregada;
   }
 
   async eliminarImagen(usuarioId: number, productoId: number, imagenId: number) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
     await this.repository.eliminarImagen(imagenId, productoId);
+    this.invalidarCacheProductos(tienda.id);
   }
 
   // ── Variantes ──
@@ -175,7 +274,12 @@ export class ProductosService {
   async crearVariante(usuarioId: number, productoId: number, datos: CrearVarianteDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
-    return this.repository.crearVariante(productoId, datos);
+    const variante = await this.repository.crearVariante(productoId, {
+      ...datos,
+      stock: Number(datos.stock || 0)
+    });
+    this.invalidarCacheProductos(tienda.id);
+    return variante;
   }
 
   async actualizarVariante(
@@ -186,13 +290,29 @@ export class ProductosService {
   ) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
-    return this.repository.actualizarVariante(varianteId, productoId, datos);
+    const variante = await this.repository.actualizarVariante(varianteId, productoId, datos);
+    this.invalidarCacheProductos(tienda.id);
+    return variante;
   }
 
   async eliminarVariante(usuarioId: number, productoId: number, varianteId: number) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
     await this.repository.eliminarVariante(varianteId, productoId);
+    this.invalidarCacheProductos(tienda.id);
+  }
+
+  async subirImagenVariante(usuarioId: number, productoId: number, varianteId: number, file: Express.Multer.File) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    await this.verificarProductoOFallar(productoId, tienda.id);
+    
+    // Subir a cloudinary
+    const imagenUrl = await uploadImageToCloudinary(file.buffer);
+    
+    // Actualizar la variante
+    const variante = await this.repository.actualizarVariante(varianteId, productoId, { imagenUrl });
+    this.invalidarCacheProductos(tienda.id);
+    return variante;
   }
 
   // ── Helpers privados ──
@@ -209,28 +329,44 @@ export class ProductosService {
     return producto;
   }
 
+  private invalidarCacheProductos(tiendaId: number) {
+    cacheService.flushPrefix(`productos_tienda_${tiendaId}`);
+  }
+
   /**
    * Lista solo productos destacados de una tienda (público).
    */
   async listarDestacados(tiendaId: number, filtros: FiltrosProductosDto) {
+    const cacheKey = `productos_tienda_${tiendaId}_destacados_${JSON.stringify(filtros)}`;
+    const cached = cacheService.get(cacheKey);
+    if (cached) return cached;
+
     const { datos, total } = await this.repository.listar(
       tiendaId,
       { ...filtros, destacado: true },
       true
     );
-    return construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    const resultado = construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    cacheService.set(cacheKey, resultado);
+    return resultado;
   }
 
   /**
    * Lista solo productos normales (no destacados) de una tienda (público).
    */
   async listarNormales(tiendaId: number, filtros: FiltrosProductosDto) {
+    const cacheKey = `productos_tienda_${tiendaId}_normales_${JSON.stringify(filtros)}`;
+    const cached = cacheService.get(cacheKey);
+    if (cached) return cached;
+
     const { datos, total } = await this.repository.listar(
       tiendaId,
       { ...filtros, destacado: false },
       true
     );
-    return construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    const resultado = construirPaginacion(datos, total, filtros.pagina, filtros.limite);
+    cacheService.set(cacheKey, resultado);
+    return resultado;
   }
 
   // ── Categorías ──
@@ -347,6 +483,7 @@ export class ProductosService {
       }
     }
 
+    this.invalidarCacheProductos(tienda.id);
     return { creados, actualizados, total: data.length };
   }
 }

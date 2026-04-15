@@ -3,10 +3,13 @@
 import cors from 'cors';
 import express, { Application } from 'express';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
+import * as Sentry from '@sentry/node';
 import { env } from './config/env';
 import { manejadorErrores, noEncontrado } from './middleware/errores.middleware';
 import router from './router';
+import { logStream } from './utils/logger';
 
 /**
  * Crea y configura la aplicación Express con todos sus middlewares.
@@ -20,31 +23,33 @@ export function crearApp(): Application {
   // ─────────────────────────────────────────────
 
   // Helmet agrega headers HTTP de seguridad (XSS, clickjacking, etc.)
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // Permite cargar recursos de otros dominios (ej. imágenes)
+  }));
 
   // CORS: solo permitimos el origen configurado en .env
   app.use(
     cors({
-      origin: [env.CORS_ORIGIN, 'http://localhost:5174'],
+      origin: env.esProduccion ? env.CORS_ORIGIN : [env.CORS_ORIGIN, 'http://localhost:5174', 'http://localhost:5173'],
       credentials: true, // Permite cookies y headers de auth
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-session-id'],
     })
   );
 
   // Rate limiting: protege contra abuso y ataques de fuerza bruta
-  // const limiter = rateLimit({
-  //   windowMs: env.RATE_LIMIT_WINDOW_MS,
-  //   max: env.RATE_LIMIT_MAX,
-  //   message: {
-  //     ok: false,
-  //     mensaje: "Demasiadas solicitudes. Por favor intentá más tarde.",
-  //   },
-  //   standardHeaders: true,   // Agrega headers RateLimit-* estándar
-  //   legacyHeaders: false,     // Desactiva X-RateLimit-* deprecated
-  // });
+  const limiter = rateLimit({
+    windowMs: env.RATE_LIMIT_WINDOW_MS,
+    max: env.RATE_LIMIT_MAX,
+    message: {
+      ok: false,
+      mensaje: "Demasiadas solicitudes. Por favor intentá más tarde.",
+    },
+    standardHeaders: true,   // Agrega headers RateLimit-* estándar
+    legacyHeaders: false,     // Desactiva X-RateLimit-* deprecated
+  });
 
-  // app.use(limiter);
+  app.use(limiter);
 
   // ─────────────────────────────────────────────
   // PARSING Y LOGGING
@@ -54,10 +59,8 @@ export function crearApp(): Application {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  // Morgan: logging de requests HTTP
-  // En desarrollo: formato colorido con detalles
-  // En producción: formato 'combined' estándar para herramientas de análisis
-  app.use(morgan(env.esDevelopment ? 'dev' : 'combined'));
+  // Morgan: logging de requests HTTP pasando por Winston
+  app.use(morgan(env.esDevelopment ? 'dev' : 'combined', { stream: logStream }));
 
   // ─────────────────────────────────────────────
   // HEALTH CHECK
@@ -82,8 +85,12 @@ export function crearApp(): Application {
 
   // ─────────────────────────────────────────────
   // MANEJO DE ERRORES
-  // Siempre van al final, después de las rutas.
   // ─────────────────────────────────────────────
+
+  // Sentry Error Handler (debe ir ANTES de cualquier otro manejador de errores, pero DESPUÉS de las rutas)
+  if (env.SENTRY_DSN) {
+    Sentry.setupExpressErrorHandler(app);
+  }
 
   // 404: captura cualquier ruta no definida
   app.use(noEncontrado);
@@ -93,3 +100,5 @@ export function crearApp(): Application {
 
   return app;
 }
+
+

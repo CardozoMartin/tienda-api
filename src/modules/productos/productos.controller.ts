@@ -19,8 +19,7 @@ export class ProductosController {
     this.service = new ProductosService();
   }
 
-  // ── Rutas públicas ──
-
+//Controlador para obtener la lista de productos públicos de una tienda, con soporte para filtros de búsqueda, paginación y ordenamiento. No requiere autenticación.
   listarPublicos = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { tiendaId } = req.params;
@@ -32,9 +31,7 @@ export class ProductosController {
     }
   };
 
-  /**
-   * Obtiene la lista de productos destacados para una tienda (público).
-   */
+  //Controlador para obtener la lista de productos del owner autenticado, con soporte para filtros de búsqueda, paginación y ordenamiento. Requiere autenticación.
   listarDestacados = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { tiendaId } = req.params;
@@ -46,9 +43,7 @@ export class ProductosController {
     }
   };
 
-  /**
-   * Obtiene la lista de productos normales (no destacados) para una tienda (público).
-   */
+  //Controlador para obtener la lista de productos normales (no destacados) de una tienda, con soporte para filtros de búsqueda, paginación y ordenamiento. No requiere autenticación.
   listarNormales = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { tiendaId } = req.params;
@@ -60,9 +55,7 @@ export class ProductosController {
     }
   };
 
-  /**
-   * Obtiene los detalles de un producto de forma pública.
-   */
+  //Controlador para obtener los detalles de un producto público de una tienda. No requiere autenticación.
   obtenerPublico = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const tiendaId = parseInt(req.params['tiendaId'] as string, 10);
@@ -74,8 +67,8 @@ export class ProductosController {
     }
   };
 
-  // ── Rutas del owner ──
 
+ //controlador para obtener los detalles de un producto del owner autenticado. Requiere autenticación.
   listarMisProductos = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -87,6 +80,7 @@ export class ProductosController {
     }
   };
 
+  //Controlador para obtener los detalles de un producto del owner autenticado. Requiere autenticación.
   obtenerMiProducto = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -98,6 +92,7 @@ export class ProductosController {
     }
   };
 
+  //Controlador para crear un nuevo producto. Requiere autenticación. El owner autenticado solo puede crear productos para SU tienda.
   crear = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -115,6 +110,7 @@ export class ProductosController {
     }
   };
 
+  //Controlador para actualizar un producto existente. Requiere autenticación. El owner autenticado solo puede actualizar productos de SU tienda.
   actualizar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -135,6 +131,7 @@ export class ProductosController {
     }
   };
 
+  //Controlador para eliminar un producto. Requiere autenticación. El owner autenticado solo puede eliminar productos de SU tienda.
   eliminar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -146,6 +143,7 @@ export class ProductosController {
     }
   };
 
+  //Controlador para actualizar las tags de un producto. Requiere autenticación. El owner autenticado solo puede actualizar productos de SU tienda.
   actualizarTags = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -158,8 +156,9 @@ export class ProductosController {
     }
   };
 
-  // ── Imágenes ──
 
+
+  //Controlador para agregar una imagen a un producto. Requiere autenticación. El owner autenticado solo puede agregar imágenes a productos de SU tienda.
   agregarImagen = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -177,6 +176,7 @@ export class ProductosController {
     }
   };
 
+  // Controlador para eliminar una imagen de un producto. Requiere autenticación. El owner autenticado solo puede eliminar imágenes de productos de SU tienda.
   eliminarImagen = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -191,6 +191,7 @@ export class ProductosController {
 
   // ── Variantes ──
 
+  //Controlador para crear una variante de un producto. Requiere autenticación. El owner autenticado solo puede crear variantes para productos de SU tienda.
   crearVariante = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -206,6 +207,7 @@ export class ProductosController {
     }
   };
 
+  //Controlador para actualizar una variante de un producto. Requiere autenticación. El owner autenticado solo puede actualizar variantes de productos de SU tienda.
   actualizarVariante = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -223,6 +225,7 @@ export class ProductosController {
     }
   };
 
+  //Controlador para eliminar una variante de un producto. Requiere autenticación. El owner autenticado solo puede eliminar variantes de productos de SU tienda.
   eliminarVariante = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
@@ -235,8 +238,26 @@ export class ProductosController {
     }
   };
 
+  //Controlador para subir una imagen a una variante de un producto. Requiere autenticación. El owner autenticado solo puede subir imágenes a variantes de productos de SU tienda.
+  subirImagenVariante = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const productoId = parseInt(req.params['productoId'] as string, 10);
+      const varianteId = parseInt(req.params['varianteId'] as string, 10);
+      const file = (req as any).file as Express.Multer.File | undefined;
+
+      if (!file) throw new Error('No se recibió ningún archivo');
+
+      const variante = await this.service.subirImagenVariante(usuarioId, productoId, varianteId, file);
+      responderOk(res, variante, 'Imagen de variante subida exitosamente');
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // ── Categorías (Para Owners) ──
 
+  //Controlador para listar todas las categorías disponibles. Requiere autenticación.
   listarCategorias = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       responderOk(res, await this.service.listarCategorias(), 'Categorías obtenidas');
@@ -245,6 +266,8 @@ export class ProductosController {
     }
   };
 
+
+  //Controlador para listar las categorías de una tienda específica. No requiere autenticación.
   listarCategoriasPublicas = async (
     req: Request,
     res: Response,
@@ -263,6 +286,8 @@ export class ProductosController {
   };
 
   // ── Excel ──
+  //REVISARRR!!!!!
+  //TODO: Hay que testear estas rutas porque no estan funcionando como deberian devuelven un 200 pero no ejecutan las consultas como deberian
 
   exportar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -279,7 +304,7 @@ export class ProductosController {
       next(error);
     }
   };
-
+  //el exportar funciona algo pero el importar no funciona, no se si es un error del controller o del service, hay que testearlo bien para ver donde esta el error
   importar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;

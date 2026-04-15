@@ -25,6 +25,13 @@ export const CrearTiendaSchema = z.object({
   whatsapp: z.string().max(30).trim().optional(),
   instagram: z.string().max(100).trim().optional(),
   facebook: z.string().max(100).trim().optional(),
+  slug: z
+    .string()
+    .trim()
+    .min(3, 'El slug debe tener al menos 3 caracteres')
+    .max(60, 'El slug no puede tener más de 60 caracteres')
+    .regex(/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/, 'El slug solo puede contener letras minúsculas, números, guiones y guiones bajos')
+    .optional(),
   sitioWeb: z.string().url('El sitio web debe ser una URL válida').optional(),
   pais: z.string().max(80).trim().optional(),
   provincia: z.string().max(80).trim().optional(),
@@ -75,10 +82,7 @@ export const ActualizarTemaSchema = z.object({
 
 export type ActualizarTemaDto = z.infer<typeof ActualizarTemaSchema>;
 
-// ─────────────────────────────────────────────
-// MÉTODOS DE PAGO / ENTREGA
-// ─────────────────────────────────────────────
-
+//Metodos de pago y entrega
 export const AgregarMetodoPagoSchema = z.object({
   metodoPagoId: z.number().int().positive('El ID del método de pago es requerido'),
   detalle: z.string().max(255).trim().optional(),
@@ -94,10 +98,7 @@ export const AgregarMetodoEntregaSchema = z.object({
 
 export type AgregarMetodoEntregaDto = z.infer<typeof AgregarMetodoEntregaSchema>;
 
-// ─────────────────────────────────────────────
-// CARRUSEL
-// ─────────────────────────────────────────────
-
+//Carrusel de imágenes
 export const AgregarImagenCarruselSchema = z.object({
   url: z.string().url('La URL de la imagen no es válida').max(500).optional(), // Optional si se suben archivos
   titulo: z.string().max(200).trim().optional(),
@@ -108,10 +109,7 @@ export const AgregarImagenCarruselSchema = z.object({
 
 export type AgregarImagenCarruselDto = z.infer<typeof AgregarImagenCarruselSchema>;
 
-// ─────────────────────────────────────────────
-// FILTROS PARA BÚSQUEDA PÚBLICA
-// ─────────────────────────────────────────────
-
+//Filtros para listar tiendas en el endpoint público, con paginación, búsqueda por nombre y ubicación, y ordenamiento
 export const FiltrosTiendasSchema = z.object({
   pagina: z.coerce.number().int().positive().default(1),
   limite: z.coerce.number().int().positive().max(50).default(20),
@@ -123,3 +121,25 @@ export const FiltrosTiendasSchema = z.object({
 });
 
 export type FiltrosTiendasDto = z.infer<typeof FiltrosTiendasSchema>;
+
+//Sobre nosotros
+export const ActualizarAboutUsSchema = z.object({
+  titulo: z.string().max(200).trim().optional(),
+  descripcion: z.string().max(5000).trim().optional(),
+  direccion: z.string().max(300).trim().optional(),
+  imagenUrl: z.string().url().max(500).optional(),
+});
+
+export type ActualizarAboutUsDto = z.infer<typeof ActualizarAboutUsSchema>;
+
+//Slider que puede mostrar marcas frases etc
+export const MarqueeItemSchema = z.object({
+  texto: z.string().min(1).max(100).trim(),
+  orden: z.number().int().min(0).default(0),
+});
+
+export const ActualizarMarqueeSchema = z.object({
+  items: z.array(MarqueeItemSchema),
+});
+
+export type ActualizarMarqueeDto = z.infer<typeof ActualizarMarqueeSchema>;
