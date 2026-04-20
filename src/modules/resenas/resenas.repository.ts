@@ -1,7 +1,7 @@
-import { prisma } from "@/config/prisma";
-import { Prisma } from "@prisma/client";
-import { FiltrosResenasDto } from "./resentas.dto";
-import { calcularSkip } from "@/utils/helpers";
+import { prisma } from '@/config/prisma';
+import { calcularSkip } from '@/utils/helpers';
+import { Prisma } from '@prisma/client';
+import { FiltrosResenasDto } from './resentas.dto';
 
 export class ResenasRepository {
   //Query para las reseñas de la cientas
@@ -16,10 +16,7 @@ export class ResenasRepository {
     return prisma.resenaTienda.create({ data: datos });
   }
 
-  async listarResenasTienda(
-    tiendaId: number,
-    filtros: FiltrosResenasDto
-  ) {
+  async listarResenasTienda(tiendaId: number, filtros: FiltrosResenasDto) {
     const where: Prisma.ResenaTiendaWhereInput = {
       tiendaId,
       eliminada: false,
@@ -51,10 +48,10 @@ export class ResenasRepository {
     });
 
     const distribucion = await prisma.resenaTienda.groupBy({
-      by: ["calificacion"],
+      by: ['calificacion'],
       where: { tiendaId, aprobada: true, eliminada: false },
       _count: { calificacion: true },
-      orderBy: { calificacion: "asc" },
+      orderBy: { calificacion: 'asc' },
     });
 
     return {
@@ -104,7 +101,7 @@ export class ResenasRepository {
   async listarPendientesTienda(tiendaId: number) {
     return prisma.resenaTienda.findMany({
       where: { tiendaId, aprobada: false, eliminada: false },
-      orderBy: { creadoEn: "asc" },
+      orderBy: { creadoEn: 'asc' },
       include: {
         cliente: { select: { id: true, nombre: true, email: true } },
       },
@@ -131,10 +128,7 @@ export class ResenasRepository {
     });
   }
 
-  async listarResenasProducto(
-    productoId: number,
-    filtros: FiltrosResenasDto
-  ) {
+  async listarResenasProducto(productoId: number, filtros: FiltrosResenasDto) {
     const where: Prisma.ResenaProductoWhereInput = {
       productoId,
       eliminada: false,
@@ -166,10 +160,10 @@ export class ResenasRepository {
     });
 
     const distribucion = await prisma.resenaProducto.groupBy({
-      by: ["calificacion"],
+      by: ['calificacion'],
       where: { productoId, aprobada: true, eliminada: false },
       _count: { calificacion: true },
-      orderBy: { calificacion: "asc" },
+      orderBy: { calificacion: 'asc' },
     });
 
     return {
@@ -223,7 +217,7 @@ export class ResenasRepository {
         eliminada: false,
         producto: { tiendaId },
       },
-      orderBy: { creadoEn: "asc" },
+      orderBy: { creadoEn: 'asc' },
       include: {
         producto: { select: { id: true, nombre: true } },
         cliente: { select: { id: true, nombre: true, email: true } },
