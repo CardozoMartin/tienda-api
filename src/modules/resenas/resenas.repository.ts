@@ -34,7 +34,7 @@ export class ResenasRepository {
         take: filtros.limite,
         orderBy: { [filtros.orden]: filtros.direccion },
         include: {
-          usuario: { select: { id: true, nombre: true, avatarUrl: true } },
+          cliente: { select: { id: true, nombre: true, email: true } },
         },
       }),
       prisma.resenaTienda.count({ where }),
