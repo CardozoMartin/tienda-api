@@ -2,7 +2,7 @@
 // Hay dos contextos:
 //   1. Rutas públicas: montadas bajo /tiendas/:tiendaId/productos
 //   2. Rutas del owner: montadas bajo /mis-productos
-import { uploadSingle } from '@/config/multer.config';
+import { uploadSingle } from '../../config/multer.config';
 import { RolUsuario } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
