@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import { ResenasService } from "./resenas.service";
 import { CrearResenaDto, CrearResenaSchema, FiltrosResenasDto, ResponderResenaDto } from "./resentas.dto";
-import { responderOk, responderPaginado } from "@/utils/helpers";
-import { RequestConCliente } from "@/middleware/clientes.auth.middleware";
-import { ErrorApi } from "@/types";
+import { responderOk, responderPaginado } from "../../utils/helpers";
+import { RequestConCliente } from "../../middleware/clientes.auth.middleware";
+import { ErrorApi } from "../../types";
 
 export class ResenasController {
   private service: ResenasService;

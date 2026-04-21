@@ -1,4 +1,4 @@
-import { uploadImageToCloudinary } from '@/utils/cloudinary';
+import { uploadImageToCloudinary } from '../../utils/cloudinary';
 import * as XLSX from 'xlsx';
 import { prisma } from '../../config/prisma';
 import { ErrorApi } from '../../types';

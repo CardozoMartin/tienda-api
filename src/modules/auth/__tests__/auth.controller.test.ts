@@ -1,4 +1,4 @@
-import { crearApp } from '@/app';
+import { crearApp } from '../../../app';
 import request from 'supertest';
 import { Application } from 'express';
 

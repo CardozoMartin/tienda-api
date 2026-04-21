@@ -1,5 +1,5 @@
-import { prisma } from '@/config/prisma';
-import { calcularSkip } from '@/utils/helpers';
+import { prisma } from '../../config/prisma';
+import { calcularSkip } from '../../utils/helpers';
 import { Prisma } from '@prisma/client';
 import { FiltrosResenasDto } from './resentas.dto';
 
