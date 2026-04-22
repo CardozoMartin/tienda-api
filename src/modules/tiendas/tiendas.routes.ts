@@ -15,7 +15,7 @@ import {
   ActualizarAboutUsSchema,
   ActualizarMarqueeSchema,
 } from './tiendas.dto';
-import { uploadMultiple, uploadSingle } from '@/config/multer.config';
+import { uploadMultiple, uploadSingle } from '../../config/multer.config';
 
 
 const router = Router();

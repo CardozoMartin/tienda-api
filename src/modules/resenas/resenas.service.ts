@@ -1,7 +1,7 @@
-import { construirPaginacion } from '@/utils/helpers';
+import { construirPaginacion } from '../../utils/helpers';
 import { CrearResenaDto, FiltrosResenasDto } from './resentas.dto';
 import { ResenasRepository } from './resenas.repository';
-import cloudinary from '@/config/cloudinary.config';
+import cloudinary from '../../config/cloudinary.config';
 
 export class ResenasService {
   private repository: ResenasRepository;

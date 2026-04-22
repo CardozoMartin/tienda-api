@@ -1,3 +1,8 @@
+import path from 'path';
+import * as moduleAlias from 'module-alias';
+
+(moduleAlias as any).addAlias('@', path.join(__dirname, '.'));
+
 import "dotenv/config";
 import * as Sentry from "@sentry/node";
 import { nodeProfilingIntegration } from "@sentry/profiling-node";
