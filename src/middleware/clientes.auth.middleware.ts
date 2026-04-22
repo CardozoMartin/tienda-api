@@ -1,6 +1,4 @@
-// Middleware de autenticación para clientes de tienda.
-// Los clientes usan un JWT con payload { id, email, tiendaId, tipo: 'cliente' }
-// diferente al JWT de owners/admins que usa { sub, email, rol }.
+
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { ErrorApi } from '../types';
@@ -17,11 +15,7 @@ export interface RequestConCliente extends Request {
   clienteAuth?: ClienteAuthPayload;
 }
 
-/**
- * Verifica que el request tenga un JWT válido de cliente.
- * Si es válido, adjunta el payload en req.clienteAuth.
- * Retorna 401 si no hay token, es inválido, o no es de tipo 'cliente'.
- */
+
 export function autenticarCliente(
   req: Request,
   _res: Response,

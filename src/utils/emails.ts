@@ -1,5 +1,4 @@
-// Servicio de envío de emails.
-// Centraliza todas las plantillas y lógica de envío de emails.
+
 import { env } from '../config/env';
 import { transporter } from '../config/mailer';
 
@@ -9,9 +8,9 @@ interface OpcionesEmail {
   html: string;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // BASE SENDER
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 export async function enviarEmail(opciones: OpcionesEmail): Promise<boolean> {
   try {
@@ -38,11 +37,8 @@ export async function enviarEmail(opciones: OpcionesEmail): Promise<boolean> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // HELPERS DE LAYOUT
-// ─────────────────────────────────────────────────────────────────────────────
 
-/** Bloque inferior de contacto que va en TODOS los emails de pedidos */
 function bloqueContacto(tienda: any): string {
   const whatsapp = tienda?.whatsapp;
   const telefono = tienda?.usuario?.telefono;
@@ -80,9 +76,6 @@ function bloqueContacto(tienda: any): string {
     </div>`;
 }
 
-/**
- * Genera el mensaje personalizado según el método de entrega al confirmar el pedido.
- */
 function mensajeEntregaConfirmado(pedido: any): string {
   const nombre = (pedido.metodoEntrega?.nombre ?? '').toLowerCase();
 
@@ -138,9 +131,7 @@ function mensajeEntregaConfirmado(pedido: any): string {
     </div>`;
 }
 
-/**
- * Genera el bloque de seguimiento postal si el pedido tiene nroSeguimiento.
- */
+
 function bloqueSeguimiento(pedido: any): string {
   if (!pedido.nroSeguimiento) return '';
 
@@ -279,7 +270,7 @@ export async function enviarEmailNuevoPedidoAlCliente(
         <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
           <h2 style="color: #2D3748; text-align: center;">¡Gracias por tu compra, ${nombre}!</h2>
           <p>Tu pedido <strong>#${pedido.id}</strong> en <strong>${nombreTienda}</strong> ha sido recibido correctamente y está a la espera de confirmación.</p>
-          
+
           <h3 style="border-bottom: 2px solid #edf2f7; padding-bottom: 10px; margin-top: 30px;">Resumen del Pedido</h3>
           <table style="width: 100%; border-collapse: collapse;">
             <thead>
@@ -332,7 +323,7 @@ export async function enviarEmailNuevoPedidoAlOwner(
         <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
           <h2 style="color: #2D3748;">¡Nuevo pedido recibido! 🚀</h2>
           <p>Hola ${nombreOwner}, has recibido un nuevo pedido en <strong>${nombreTienda}</strong>.</p>
-          
+
           <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin: 25px 0;">
             <p style="margin: 0;"><strong>Pedido:</strong> #${pedido.id}</p>
             <p style="margin: 5px 0;"><strong>Cliente:</strong> ${pedido.compradorNombre}</p>

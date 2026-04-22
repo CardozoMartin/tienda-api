@@ -1,5 +1,3 @@
-// Configuración de la aplicación Express.
-// Separamos la app del server.ts para facilitar el testing.
 import cors from 'cors';
 import express, { Application } from 'express';
 import helmet from 'helmet';
@@ -11,27 +9,23 @@ import { manejadorErrores, noEncontrado } from './middleware/errores.middleware'
 import router from './router';
 import { logStream } from './utils/logger';
 
-/**
- * Crea y configura la aplicación Express con todos sus middlewares.
- * Exportar la app por separado del server permite usarla en tests.
- */
 export function crearApp(): Application {
   const app = express();
 
-  // ─────────────────────────────────────────────
+
   // SEGURIDAD
-  // ─────────────────────────────────────────────
+
 
   // Helmet agrega headers HTTP de seguridad (XSS, clickjacking, etc.)
   app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }, // Permite cargar recursos de otros dominios (ej. imágenes)
+    crossOriginResourcePolicy: { policy: "cross-origin" },
   }));
 
   // CORS: solo permitimos el origen configurado en .env
   app.use(
     cors({
       origin: env.esProduccion ? env.CORS_ORIGIN : [env.CORS_ORIGIN, 'http://localhost:5174', 'http://localhost:5173'],
-      credentials: true, // Permite cookies y headers de auth
+      credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'x-session-id'],
     })
@@ -45,15 +39,13 @@ export function crearApp(): Application {
       ok: false,
       mensaje: "Demasiadas solicitudes. Por favor intentá más tarde.",
     },
-    standardHeaders: true,   // Agrega headers RateLimit-* estándar
-    legacyHeaders: false,     // Desactiva X-RateLimit-* deprecated
+    standardHeaders: true,
+    legacyHeaders: false,
   });
 
   app.use(limiter);
 
-  // ─────────────────────────────────────────────
-  // PARSING Y LOGGING
-  // ─────────────────────────────────────────────
+
 
   // Parseamos JSON con límite de 10mb para permitir imágenes en base64 si fuera necesario
   app.use(express.json({ limit: '10mb' }));
@@ -62,11 +54,7 @@ export function crearApp(): Application {
   // Morgan: logging de requests HTTP pasando por Winston
   app.use(morgan(env.esDevelopment ? 'dev' : 'combined', { stream: logStream }));
 
-  // ─────────────────────────────────────────────
-  // HEALTH CHECK
-  // Ruta simple para verificar que el servidor está funcionando.
-  // Útil para load balancers y monitoreo.
-  // ─────────────────────────────────────────────
+
 
   app.get('/health', (_req, res) => {
     res.json({
@@ -77,16 +65,13 @@ export function crearApp(): Application {
     });
   });
 
-  // ─────────────────────────────────────────────
+
   // RUTAS
-  // ─────────────────────────────────────────────
 
   app.use(env.API_PREFIX, router);
 
-  // ─────────────────────────────────────────────
-  // MANEJO DE ERRORES
-  // ─────────────────────────────────────────────
 
+  // MANEJO DE ERRORES
   // Sentry Error Handler (debe ir ANTES de cualquier otro manejador de errores, pero DESPUÉS de las rutas)
   if (env.SENTRY_DSN) {
     Sentry.setupExpressErrorHandler(app);

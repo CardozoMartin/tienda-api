@@ -1,17 +1,10 @@
-// Middlewares de autenticación y autorización.
-// Se usan en las rutas que requieren que el usuario esté logueado o tenga cierto rol.
 import { RolUsuario } from '@prisma/client';
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { ErrorApi, RequestAutenticado } from '../types';
 
-/**
- * Verifica que el request tenga un JWT válido en el header Authorization.
- * Si es válido, adjunta el payload decodificado en req.usuario.
- *
- * Uso: router.get("/ruta-protegida", autenticar, controller)
- */
+
 export function autenticar(req: Request, _res: Response, next: NextFunction): void {
   try {
     // Extraemos el token del header "Authorization: Bearer <token>"
@@ -52,11 +45,6 @@ export function autenticar(req: Request, _res: Response, next: NextFunction): vo
   }
 }
 
-/**
- * Middleware para autenticar CLIENTES de tienda.
- * El JWT del cliente contiene { id, email, tiendaId, tipo: 'cliente' }
- * y se adjunta en req.clienteAutenticado para distinguirlo del usuario admin.
- */
 export function autenticarCliente(req: Request, _res: Response, next: NextFunction): void {
   try {
     const authHeader = req.headers['authorization'];
@@ -91,12 +79,6 @@ export function autenticarCliente(req: Request, _res: Response, next: NextFuncti
   }
 }
 
-/**
- * Verifica si el request tiene un JWT válido en el header Authorization.
- * Si es válido, adjunta el payload decodificado en req.usuario.
- * A diferencia de autenticar, no lanza error si no hay token o es inválido,
- * permitiendo usuarios invitados.
- */
 export function autenticarOpcional(req: Request, _res: Response, next: NextFunction): void {
   try {
     const authHeader = req.headers['authorization'];
@@ -110,9 +92,6 @@ export function autenticarOpcional(req: Request, _res: Response, next: NextFunct
     }
 
     const payload = jwt.verify(token, env.JWT_SECRET) as any;
-
-    // Normalizamos el payload para que siempre tenga 'sub' (ID) y 'rol'
-    // Los tokens de cliente vienen con { id, tipo: 'cliente' }
     if (payload.tipo === 'cliente') {
       payload.sub = payload.id;
       payload.rol = 'CLIENT';
@@ -128,14 +107,6 @@ export function autenticarOpcional(req: Request, _res: Response, next: NextFunct
   }
 }
 
-/**
- * Fábrica de middleware de autorización por rol.
- * Verifica que el usuario autenticado tenga al menos uno de los roles permitidos.
- *
- * Uso: router.delete("/admin/ruta", autenticar, autorizar(RolUsuario.ADMIN), controller)
- *
- * @param rolesPermitidos - Uno o más roles que pueden acceder al recurso
- */
 export function autorizar(...rolesPermitidos: RolUsuario[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     const usuario = (req as RequestAutenticado).usuario;
@@ -155,15 +126,6 @@ export function autorizar(...rolesPermitidos: RolUsuario[]) {
   };
 }
 
-/**
- * Verifica que el usuario autenticado sea el dueño de un recurso.
- * El ID del propietario se pasa como argumento (obtenido del recurso en la DB).
- *
- * Uso: dentro de un controller, después de obtener el recurso de la DB.
- *
- * @param usuarioId - ID del propietario del recurso
- * @param rolExcepcion - Rol que puede bypasear la verificación (ej: ADMIN)
- */
 export function verificarPropietario(
   req: Request,
   usuarioId: number,

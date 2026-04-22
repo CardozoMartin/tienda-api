@@ -24,7 +24,7 @@ router.use('/mis-productos/:productoId/resenas', resenasProductoRouter);
 router.use('/admin', adminRouter);
 router.use('/carrito', carritoRouter);
 router.use('/tiendas/:tiendaId/pedidos', pedidosRouter);
-router.use('/pedidos', pedidosRouter); // Para listar todos o por filtros desde el dashboard
+router.use('/pedidos', pedidosRouter); 
 router.use('/ai', aiRouter);
 
 // Ruta de prueba para verificar la integración con Sentry

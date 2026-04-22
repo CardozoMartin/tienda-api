@@ -35,14 +35,14 @@ const transports = [
     format: consoleFormat,
     level: env.esDevelopment ? 'debug' : 'info',
   }),
-  
+
   // Archivo de errores: solo errores críticos
   new winston.transports.File({
     filename: path.join('logs', 'error.log'),
     level: 'error',
     format: fileFormat,
   }),
-  
+
   // Archivo combinado: todos los logs
   new winston.transports.File({
     filename: path.join('logs', 'combined.log'),
@@ -50,10 +50,7 @@ const transports = [
   }),
 ];
 
-/**
- * Logger centralizado de la aplicación.
- * Uso: logger.info('mensaje'), logger.error('mensaje', error)
- */
+
 export const logger = winston.createLogger({
   level: env.esDevelopment ? 'debug' : 'info',
   levels: {

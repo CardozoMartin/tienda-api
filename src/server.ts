@@ -34,7 +34,7 @@ async function iniciar(): Promise<void> {
 
     // Inicializamos el servicio de email
     await inicializarMailer();
-    
+
     // Verificamos que el SMTP esté funcionando
     const mailOk = await verificarMailer();
     if (!mailOk) {
@@ -50,11 +50,7 @@ async function iniciar(): Promise<void> {
       logger.info(`   Health:   http://localhost:${env.PORT}/health`);
     });
 
-    // ─────────────────────────────────────────────
-    // GRACEFUL SHUTDOWN
-    // Cuando el proceso recibe SIGTERM o SIGINT (Ctrl+C),
-    // cerramos el servidor y la conexión a la DB limpiamente.
-    // ─────────────────────────────────────────────
+ 
 
     const cerrarLimpiamente = async (señal: string): Promise<void> => {
       logger.info(`\n${señal} recibido. Cerrando servidor...`);
