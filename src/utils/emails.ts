@@ -1,4 +1,3 @@
-
 import { env } from '../config/env';
 import { transporter } from '../config/mailer';
 
@@ -8,9 +7,240 @@ interface OpcionesEmail {
   html: string;
 }
 
+// ─── Design Tokens (sincronizados con el frontend) ────────────────────────────
+const T = {
+  bg:          '#f7f4ef',   // fondo warm off-white
+  surface:     '#ffffff',
+  dark:        '#15110e',   // texto principal
+  darkMid:     '#2c241f',
+  muted:       '#64584f',   // texto secundario
+  mutedLight:  '#b0a49c',
+  accent:      '#ff6b3d',   // naranja principal
+  purple:      '#7c6bff',   // acento púrpura
+  purpleLight: '#cbb7ff',
+  green:       '#25D366',
+  border:      'rgba(23,18,15,0.10)',
+  borderLight: 'rgba(23,18,15,0.06)',
+};
 
-// BASE SENDER
+// ─── Layout base de todos los emails ─────────────────────────────────────────
+function layout(contenido: string, nombreTienda: string = 'TiendiZi'): string {
+  return `<!DOCTYPE html>
+<html dir="ltr" lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${nombreTienda}</title>
+  <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:${T.bg};font-family:'Georgia',serif;">
 
+  <!-- Outer wrapper -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${T.bg};min-height:100vh;">
+    <tr>
+      <td align="center" style="padding:32px 16px 48px;">
+
+        <!-- Card -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="max-width:600px;background-color:${T.surface};border-radius:16px;
+                      overflow:hidden;border:1px solid ${T.border};
+                      box-shadow:0 8px 40px rgba(23,18,15,0.08);">
+
+          <!-- Header con marca -->
+          <tr>
+            <td style="background-color:${T.dark};padding:32px 40px 28px;text-align:center;">
+
+              <!-- Logo wordmark con acento naranja -->
+              <div style="display:inline-block;margin-bottom:6px;">
+                <span style="font-family:'Georgia',serif;font-size:28px;font-weight:900;
+                             letter-spacing:-0.04em;color:#ffffff;">
+                  Tiendi<span style="color:${T.accent};">Zi</span>
+                </span>
+              </div>
+
+              <!-- Línea decorativa naranja / púrpura -->
+              <div style="margin:10px auto 0;width:64px;height:3px;
+                          background:linear-gradient(90deg,${T.accent},${T.purple});
+                          border-radius:99px;"></div>
+
+              <p style="margin:12px 0 0;font-size:11px;color:${T.mutedLight};
+                         text-transform:uppercase;letter-spacing:0.14em;">
+                ${nombreTienda}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Contenido dinámico -->
+          <tr>
+            <td style="padding:40px 40px 32px;">
+              ${contenido}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px;background-color:${T.bg};border-top:1px solid ${T.borderLight};text-align:center;">
+              <p style="margin:0;font-size:11px;color:${T.mutedLight};letter-spacing:0.04em;">
+                © ${new Date().getFullYear()} ${nombreTienda} · Powered by
+                <span style="color:${T.accent};font-weight:700;">TiendiZi</span>
+              </p>
+              <p style="margin:6px 0 0;font-size:10px;color:${T.mutedLight};">
+                Este es un mensaje automático, por favor no respondas este email.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+// ─── Helpers de UI reutilizables ──────────────────────────────────────────────
+
+function badge(texto: string, color: string = T.accent): string {
+  return `<span style="display:inline-block;padding:3px 12px;border-radius:99px;
+                       background-color:${color}22;color:${color};font-size:11px;
+                       font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">
+    ${texto}
+  </span>`;
+}
+
+function botonPrimario(texto: string, url: string, color: string = T.dark): string {
+  return `
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:28px auto 0;">
+      <tr>
+        <td style="background-color:${color};border-radius:12px;
+                   box-shadow:0 6px 20px rgba(23,18,15,0.18);">
+          <a href="${url}" target="_blank"
+             style="display:inline-block;padding:14px 36px;font-family:Arial,sans-serif;
+                    font-size:13px;font-weight:700;color:#ffffff;text-decoration:none;
+                    text-transform:uppercase;letter-spacing:0.12em;">
+            ${texto}
+          </a>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function divider(): string {
+  return `<div style="margin:28px 0;border:none;border-top:1px solid ${T.borderLight};"></div>`;
+}
+
+function infoBox(contenido: string, colorBorde: string = T.accent): string {
+  return `
+    <div style="border-left:3px solid ${colorBorde};background-color:${T.bg};
+                border-radius:0 10px 10px 0;padding:16px 20px;margin:20px 0;">
+      ${contenido}
+    </div>`;
+}
+
+function h1(texto: string): string {
+  return `<h1 style="margin:0 0 12px;font-family:'Georgia',serif;font-size:26px;
+                     font-weight:900;color:${T.dark};letter-spacing:-0.03em;
+                     line-height:1.15;">${texto}</h1>`;
+}
+
+function p(texto: string, estilos: string = ''): string {
+  return `<p style="margin:0 0 16px;font-size:15px;color:${T.muted};
+                    line-height:1.7;${estilos}">${texto}</p>`;
+}
+
+// ─── Bloque contacto tienda ───────────────────────────────────────────────────
+function bloqueContacto(tienda: any): string {
+  const whatsapp = tienda?.whatsapp;
+  const telefono = tienda?.usuario?.telefono;
+  if (!whatsapp && !telefono) return '';
+
+  const items: string[] = [];
+  if (whatsapp) {
+    const n = whatsapp.replace(/\D/g, '');
+    items.push(`
+      <tr>
+        <td style="padding:6px 0;font-size:13px;color:${T.muted};">
+          <span style="font-size:16px;">📱</span>&nbsp;
+          <strong style="color:${T.dark};">WhatsApp:</strong>&nbsp;
+          <a href="https://wa.me/${n}"
+             style="color:${T.green};text-decoration:none;font-weight:700;">${whatsapp}</a>
+        </td>
+      </tr>`);
+  }
+  if (telefono) {
+    items.push(`
+      <tr>
+        <td style="padding:6px 0;font-size:13px;color:${T.muted};">
+          <span style="font-size:16px;">☎️</span>&nbsp;
+          <strong style="color:${T.dark};">Teléfono:</strong>&nbsp;${telefono}
+        </td>
+      </tr>`);
+  }
+
+  return `
+    ${divider()}
+    <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;
+               letter-spacing:0.1em;color:${T.mutedLight};">¿Dudas sobre tu pedido?</p>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tbody>${items.join('')}</tbody>
+    </table>`;
+}
+
+// ─── Bloque método de entrega ─────────────────────────────────────────────────
+function mensajeEntregaConfirmado(pedido: any): string {
+  const nombre = (pedido.metodoEntrega?.nombre ?? '').toLowerCase();
+
+  if (nombre.includes('retiro') || nombre.includes('local') || nombre.includes('sucursal')) {
+    const dir = pedido.tienda?.aboutUs?.direccion ?? 'la dirección del local';
+    return infoBox(`
+      <p style="margin:0;font-size:14px;color:${T.dark};">
+        <strong>🏪 Retiro en local</strong><br>
+        <span style="color:${T.muted};">Podés pasar a retirar <strong>a partir de las 18:00 hs</strong>
+        en <strong>${dir}</strong>. Te avisamos por WhatsApp si hay cambios.</span>
+      </p>`, '#3182CE');
+  }
+  if (['uber','rappi','glovo','mensajer'].some(k => nombre.includes(k))) {
+    const wsp = pedido.tienda?.whatsapp;
+    const n = wsp ? wsp.replace(/\D/g,'') : '';
+    return infoBox(`
+      <p style="margin:0;font-size:14px;color:${T.dark};">
+        <strong>🚗 Envío por aplicación</strong><br>
+        <span style="color:${T.muted};">Nos contactaremos <strong>por WhatsApp</strong>
+        para coordinar la entrega.
+        ${wsp ? `(<a href="https://wa.me/${n}" style="color:${T.accent};">${wsp}</a>)` : ''}</span>
+      </p>`, '#d69e2e');
+  }
+  if (['cadet','moto','propi'].some(k => nombre.includes(k))) {
+    const wsp = pedido.tienda?.whatsapp;
+    const n = wsp ? wsp.replace(/\D/g,'') : '';
+    return infoBox(`
+      <p style="margin:0;font-size:14px;color:${T.dark};">
+        <strong>🏍️ Cadete propio</strong><br>
+        <span style="color:${T.muted};">Nuestro cadete se comunicará con vos para coordinar la entrega.
+        ${wsp ? `(<a href="https://wa.me/${n}" style="color:${T.accent};">${wsp}</a>)` : ''}</span>
+      </p>`, '#38a169');
+  }
+  return infoBox(`
+    <p style="margin:0;font-size:14px;color:${T.dark};">
+      <strong>📦 ${pedido.metodoEntrega?.nombre ?? 'Entrega'}</strong><br>
+      <span style="color:${T.muted};">Nos pondremos en contacto para coordinar la entrega.</span>
+    </p>`);
+}
+
+function bloqueSeguimiento(pedido: any): string {
+  if (!pedido.nroSeguimiento) return '';
+  const url = pedido.urlSeguimiento;
+  return infoBox(`
+    <p style="margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;
+               letter-spacing:0.1em;color:${T.purple};">Seguimiento del envío</p>
+    <p style="margin:0 0 ${url ? '14px' : '0'};font-size:15px;font-weight:700;color:${T.dark};">
+      📬 N° <span style="font-family:monospace;color:${T.purple};">${pedido.nroSeguimiento}</span>
+    </p>
+    ${url ? botonPrimario('Seguir mi paquete →', url, T.purple) : ''}
+  `, T.purple);
+}
+
+// ─── BASE SENDER ─────────────────────────────────────────────────────────────
 
 export async function enviarEmail(opciones: OpcionesEmail): Promise<boolean> {
   try {
@@ -20,16 +250,13 @@ export async function enviarEmail(opciones: OpcionesEmail): Promise<boolean> {
       subject: opciones.asunto,
       html: opciones.html,
     });
-
-    console.log(`✅ [EMAIL] Enviado a ${opciones.para} - ID: ${info.messageId}`);
-
+    console.log(`✅ [EMAIL] Enviado a ${opciones.para} — ID: ${info.messageId}`);
     if (env.esDevelopment && info) {
       try {
         const previewUrl = require('nodemailer').getTestMessageUrl(info);
         if (previewUrl) console.log(`📧 [EMAIL] Preview: ${previewUrl}`);
-      } catch { /* No es Ethereal, ignorar */ }
+      } catch { /* no es Ethereal */ }
     }
-
     return true;
   } catch (error) {
     console.error(`❌ [EMAIL] Error enviando a ${opciones.para}:`, error);
@@ -37,574 +264,487 @@ export async function enviarEmail(opciones: OpcionesEmail): Promise<boolean> {
   }
 }
 
-// HELPERS DE LAYOUT
-
-function bloqueContacto(tienda: any): string {
-  const whatsapp = tienda?.whatsapp;
-  const telefono = tienda?.usuario?.telefono;
-  if (!whatsapp && !telefono) return '';
-
-  const items: string[] = [];
-  if (whatsapp) {
-    const numLimpio = whatsapp.replace(/\D/g, '');
-    items.push(`
-      <tr>
-        <td style="padding: 6px 0; font-size: 13px; color: #4a5568;">
-          📱 <strong>WhatsApp:</strong>
-          <a href="https://wa.me/${numLimpio}" style="color: #25D366; text-decoration: none; font-weight: bold;">
-            ${whatsapp}
-          </a>
-        </td>
-      </tr>`);
-  }
-  if (telefono) {
-    items.push(`
-      <tr>
-        <td style="padding: 6px 0; font-size: 13px; color: #4a5568;">
-          ☎️ <strong>Teléfono:</strong> ${telefono}
-        </td>
-      </tr>`);
-  }
-
-  return `
-    <div style="background-color: #f7fafc; border-radius: 8px; padding: 16px 20px; margin-top: 24px;">
-      <p style="margin: 0 0 10px; font-size: 12px; font-weight: 700; text-transform: uppercase;
-                 letter-spacing: 0.05em; color: #a0aec0;">¿Dudas sobre tu pedido?</p>
-      <table style="width: 100%; border-collapse: collapse;">
-        <tbody>${items.join('')}</tbody>
-      </table>
-    </div>`;
-}
-
-function mensajeEntregaConfirmado(pedido: any): string {
-  const nombre = (pedido.metodoEntrega?.nombre ?? '').toLowerCase();
-
-  if (nombre.includes('retiro') || nombre.includes('local') || nombre.includes('sucursal')) {
-    const dir = pedido.tienda?.aboutUs?.direccion ?? 'la dirección del local';
-    return `
-      <div style="background-color: #ebf8ff; border-left: 4px solid #3182ce;
-                  border-radius: 6px; padding: 14px 18px; margin: 20px 0;">
-        <p style="margin: 0; font-size: 14px; color: #2b6cb0;">
-          🏪 <strong>Retiro en local:</strong> Podés pasar a retirar tu pedido
-          <strong>a partir de las 18:00 hs</strong> por <strong>${dir}</strong>.
-          Ante cualquier duda, te contactamos por WhatsApp.
-        </p>
-      </div>`;
-  }
-
-  if (nombre.includes('uber') || nombre.includes('rappi') || nombre.includes('glovo') || nombre.includes('mensajería') || nombre.includes('mensajeria')) {
-    const wsp = pedido.tienda?.whatsapp;
-    const numLimpio = wsp ? wsp.replace(/\D/g, '') : '';
-    return `
-      <div style="background-color: #fffbeb; border-left: 4px solid #d69e2e;
-                  border-radius: 6px; padding: 14px 18px; margin: 20px 0;">
-        <p style="margin: 0; font-size: 14px; color: #744210;">
-          🚗 <strong>Envío por aplicación:</strong> Nos contactaremos con vos
-          <strong>por WhatsApp</strong> para coordinar el retiro y entrega del pedido.
-          ${wsp ? `(<a href="https://wa.me/${numLimpio}" style="color: #d69e2e;">${wsp}</a>)` : ''}
-        </p>
-      </div>`;
-  }
-
-  if (nombre.includes('cadet') || nombre.includes('moto') || nombre.includes('propi')) {
-    const wsp = pedido.tienda?.whatsapp;
-    const numLimpio = wsp ? wsp.replace(/\D/g, '') : '';
-    return `
-      <div style="background-color: #f0fff4; border-left: 4px solid #38a169;
-                  border-radius: 6px; padding: 14px 18px; margin: 20px 0;">
-        <p style="margin: 0; font-size: 14px; color: #276749;">
-          🏍️ <strong>Cadete propio:</strong> Nuestro cadete se estará comunicando
-          con vos para coordinar la entrega en tu domicilio.
-          ${wsp ? `(<a href="https://wa.me/${numLimpio}" style="color: #38a169;">${wsp}</a>)` : ''}
-        </p>
-      </div>`;
-  }
-
-  // Fallback genérico
-  return `
-    <div style="background-color: #f7fafc; border-left: 4px solid #a0aec0;
-                border-radius: 6px; padding: 14px 18px; margin: 20px 0;">
-      <p style="margin: 0; font-size: 14px; color: #4a5568;">
-        📦 <strong>Método de entrega:</strong> ${pedido.metodoEntrega?.nombre ?? 'A confirmar'}.
-        Nos pondremos en contacto para coordinar la entrega.
-      </p>
-    </div>`;
-}
-
-
-function bloqueSeguimiento(pedido: any): string {
-  if (!pedido.nroSeguimiento) return '';
-
-  const url = pedido.urlSeguimiento;
-  const boton = url
-    ? `<div style="text-align: center; margin-top: 14px;">
-         <a href="${url}" target="_blank"
-            style="display: inline-block; background-color: #2d3748; color: white;
-                   padding: 10px 24px; border-radius: 8px; text-decoration: none;
-                   font-size: 13px; font-weight: bold;">
-           🔗 Seguir mi paquete
-         </a>
-       </div>`
-    : '';
-
-  return `
-    <div style="background-color: #faf5ff; border: 1px solid #e9d8fd;
-                border-radius: 8px; padding: 16px 20px; margin: 20px 0;">
-      <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; text-transform: uppercase;
-                 letter-spacing: 0.05em; color: #805ad5;">Seguimiento del Envío</p>
-      <p style="margin: 0; font-size: 15px; font-weight: bold; color: #2d3748; letter-spacing: 0.03em;">
-        📬 N° de seguimiento: <span style="font-family: monospace; color: #553c9a;">${pedido.nroSeguimiento}</span>
-      </p>
-      ${boton}
-    </div>`;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EMAILS ADMIN (verificación, reset de contraseña)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── EMAILS ADMIN ─────────────────────────────────────────────────────────────
 
 export async function enviarEmailVerificacion(
-  email: string,
-  nombre: string,
-  tokenVerificacion: string
+  email: string, nombre: string, tokenVerificacion: string
 ): Promise<boolean> {
-  const urlVerificacion = `${env.FRONTEND_URL}/verify-email?token=${tokenVerificacion}`;
-  const html = `
-    <html dir="ltr">
-      <body style="font-family: Arial, sans-serif; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2>¡Bienvenido, ${nombre}!</h2>
-          <p>Para completar tu registro como administrador, necesitás verificar tu email.</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${urlVerificacion}" style="background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-              Verificar Email
-            </a>
-          </div>
-          <p>Este enlace expira en 24 horas.</p>
-        </div>
-      </body>
-    </html>
-  `;
-  return enviarEmail({ para: email, asunto: 'Verificá tu email para completar tu registro', html });
+  const url = `${env.FRONTEND_URL}/verify-email?token=${tokenVerificacion}`;
+  const contenido = `
+    ${badge('Verificación de cuenta')}
+    <div style="margin-top:24px;">
+      ${h1(`¡Bienvenido, ${nombre}! 👋`)}
+      ${p(`Para empezar a usar <strong style="color:${T.dark};">TiendiZi</strong> y gestionar tu tienda, necesitás confirmar tu email.`)}
+      ${p(`Este enlace <strong>expira en 24 horas</strong>.`)}
+      ${botonPrimario('Verificar mi email →', url)}
+    </div>
+    ${divider()}
+    <p style="margin:0;font-size:12px;color:${T.mutedLight};text-align:center;">
+      Si no creaste una cuenta en TiendiZi, podés ignorar este mensaje.
+    </p>`;
+  return enviarEmail({
+    para: email,
+    asunto: '✉️ Verificá tu email — TiendiZi',
+    html: layout(contenido, 'TiendiZi'),
+  });
 }
 
 export async function enviarEmailResetPassword(
-  email: string,
-  nombre: string,
-  tokenReset: string,
-  nombreTienda: string = 'Tienda'
+  email: string, nombre: string, tokenReset: string, nombreTienda: string = 'TiendiZi'
 ): Promise<boolean> {
-  const urlReset = `${env.FRONTEND_URL}/reset-password?token=${tokenReset}`;
-  const html = `
-    <html dir="ltr">
-      <body style="font-family: Arial, sans-serif; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2>Restablecer Contraseña</h2>
-          <p>Hola ${nombre},</p>
-          <p>Solicitaste restablecer tu contraseña en <strong>${nombreTienda}</strong>. Haz clic en el botón de abajo para crear una nueva:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${urlReset}" style="background-color: #2196F3; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-              Restablecer Contraseña
-            </a>
-          </div>
-          <p>Este enlace expira en 1 hora.</p>
-        </div>
-      </body>
-    </html>
-  `;
-  return enviarEmail({ para: email, asunto: `Restablecer tu contraseña en ${nombreTienda}`, html });
+  const url = `${env.FRONTEND_URL}/reset-password?token=${tokenReset}`;
+  const contenido = `
+    ${badge('Seguridad de cuenta', T.purple)}
+    <div style="margin-top:24px;">
+      ${h1('Restablecer contraseña 🔐')}
+      ${p(`Hola <strong style="color:${T.dark};">${nombre}</strong>, recibimos una solicitud para cambiar la contraseña de tu cuenta en <strong>${nombreTienda}</strong>.`)}
+      ${p(`Si fuiste vos, hacé clic en el botón. Si no solicitaste esto, ignorá este email — tu contraseña no cambiará.`)}
+      ${p(`Este enlace <strong>expira en 1 hora</strong>.`)}
+      ${botonPrimario('Cambiar contraseña →', url, T.purple)}
+    </div>`;
+  return enviarEmail({
+    para: email,
+    asunto: `🔐 Restablecer contraseña — ${nombreTienda}`,
+    html: layout(contenido, nombreTienda),
+  });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EMAILS CLIENTES DE TIENDA
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── EMAILS CLIENTES ──────────────────────────────────────────────────────────
 
 export async function enviarEmailVerificacionAlCliente(
-  email: string,
-  nombre: string,
-  tokenVerificacion: string,
-  nombreTienda: string
+  email: string, nombre: string, tokenVerificacion: string, nombreTienda: string
 ): Promise<boolean> {
-  const urlVerificacion = `${env.FRONTEND_URL}/verify-email?token=${tokenVerificacion}`;
-  const html = `
-    <html dir="ltr">
-      <body style="font-family: Arial, sans-serif; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2>¡Bienvenido a ${nombreTienda}, ${nombre}!</h2>
-          <p>Para completar tu registro, necesitás verificar tu email.</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${urlVerificacion}" style="background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-              Verificar Email
-            </a>
-          </div>
-          <p>Este enlace expira en 24 horas.</p>
-        </div>
-      </body>
-    </html>
-  `;
-  return enviarEmail({ para: email, asunto: 'Verificá tu email para completar tu registro', html });
+  const url = `${env.FRONTEND_URL}/verify-email?token=${tokenVerificacion}`;
+  const contenido = `
+    ${badge('Bienvenida')}
+    <div style="margin-top:24px;">
+      ${h1(`¡Bienvenido/a a ${nombreTienda}! 🎉`)}
+      ${p(`Hola <strong style="color:${T.dark};">${nombre}</strong>, ya casi estás listo/a. Solo falta confirmar tu email para completar el registro.`)}
+      ${p(`Este enlace <strong>expira en 24 horas</strong>.`)}
+      ${botonPrimario('Confirmar mi email →', url)}
+    </div>
+    ${divider()}
+    <p style="margin:0;font-size:12px;color:${T.mutedLight};text-align:center;">
+      Si no te registraste en ${nombreTienda}, ignorá este mensaje.
+    </p>`;
+  return enviarEmail({
+    para: email,
+    asunto: `✉️ Confirmá tu email — ${nombreTienda}`,
+    html: layout(contenido, nombreTienda),
+  });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EMAILS DE PEDIDOS
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── EMAILS PEDIDOS ───────────────────────────────────────────────────────────
 
 export async function enviarEmailNuevoPedidoAlCliente(
-  email: string,
-  nombre: string,
-  pedido: any,
-  nombreTienda: string
+  email: string, nombre: string, pedido: any, nombreTienda: string
 ): Promise<boolean> {
-  const itemsHtml = pedido.items
-    .map((item: any) => `
+  const itemsHtml = pedido.items.map((item: any) => `
     <tr>
-      <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.nombreProd} ${item.nombreVar ? `(${item.nombreVar})` : ''}</td>
-      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${item.cantidad}</td>
-      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">$${Number(item.precioUnit).toLocaleString()}</td>
-    </tr>
-  `).join('');
+      <td style="padding:12px 8px;border-bottom:1px solid ${T.borderLight};
+                 font-size:13px;color:${T.dark};">
+        <strong>${item.nombreProd}</strong>
+        ${item.nombreVar ? `<br><span style="font-size:11px;color:${T.mutedLight};">${item.nombreVar}</span>` : ''}
+      </td>
+      <td style="padding:12px 8px;border-bottom:1px solid ${T.borderLight};
+                 text-align:center;font-size:13px;color:${T.muted};">${item.cantidad}</td>
+      <td style="padding:12px 8px;border-bottom:1px solid ${T.borderLight};
+                 text-align:right;font-size:13px;color:${T.muted};">
+        $${Number(item.precioUnit).toLocaleString('es-AR')}
+      </td>
+    </tr>`).join('');
 
-  const html = `
-    <html dir="ltr">
-      <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #2D3748; text-align: center;">¡Gracias por tu compra, ${nombre}!</h2>
-          <p>Tu pedido <strong>#${pedido.id}</strong> en <strong>${nombreTienda}</strong> ha sido recibido correctamente y está a la espera de confirmación.</p>
+  const contenido = `
+    ${badge('Pedido recibido ✓')}
+    <div style="margin-top:24px;">
+      ${h1(`¡Gracias por tu compra, ${nombre}!`)}
+      ${p(`Tu pedido <strong style="color:${T.dark};">#${pedido.id}</strong> en <strong>${nombreTienda}</strong> fue recibido correctamente y está en espera de confirmación. Te avisaremos cuando esté listo.`)}
+    </div>
 
-          <h3 style="border-bottom: 2px solid #edf2f7; padding-bottom: 10px; margin-top: 30px;">Resumen del Pedido</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="background-color: #f7fafc;">
-                <th style="padding: 10px; text-align: left;">Producto</th>
-                <th style="padding: 10px; text-align: center;">Cant.</th>
-                <th style="padding: 10px; text-align: right;">Precio</th>
-              </tr>
-            </thead>
-            <tbody>${itemsHtml}</tbody>
-            <tfoot>
-              <tr>
-                <td colspan="2" style="padding: 10px; text-align: right; font-weight: bold;">Total:</td>
-                <td style="padding: 10px; text-align: right; font-weight: bold; color: #E53E3E; font-size: 1.2em;">$${Number(pedido.total).toLocaleString()}</td>
-              </tr>
-            </tfoot>
-          </table>
+    <!-- Resumen -->
+    <p style="margin:24px 0 12px;font-size:11px;font-weight:700;text-transform:uppercase;
+               letter-spacing:0.1em;color:${T.mutedLight};">Resumen del pedido</p>
+    <table width="100%" cellpadding="0" cellspacing="0"
+           style="border:1px solid ${T.borderLight};border-radius:10px;overflow:hidden;">
+      <thead>
+        <tr style="background-color:${T.dark};">
+          <th style="padding:10px 8px;text-align:left;font-size:11px;color:rgba(255,255,255,0.7);
+                     text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Producto</th>
+          <th style="padding:10px 8px;text-align:center;font-size:11px;color:rgba(255,255,255,0.7);
+                     text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Cant.</th>
+          <th style="padding:10px 8px;text-align:right;font-size:11px;color:rgba(255,255,255,0.7);
+                     text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Precio</th>
+        </tr>
+      </thead>
+      <tbody>${itemsHtml}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" style="padding:14px 8px;text-align:right;font-size:13px;
+                                  font-weight:700;color:${T.dark};">Total:</td>
+          <td style="padding:14px 8px;text-align:right;font-size:18px;font-weight:900;
+                     color:${T.accent};">$${Number(pedido.total).toLocaleString('es-AR')}</td>
+        </tr>
+      </tfoot>
+    </table>
 
-          <div style="background-color: #f7fafc; padding: 15px; border-radius: 5px; margin-top: 20px;">
-            <p style="margin: 0; font-size: 0.9em;"><strong>Método de Entrega:</strong> ${pedido.metodoEntrega?.nombre || 'Consultar'}</p>
-            <p style="margin: 5px 0 0; font-size: 0.9em;"><strong>Dirección:</strong> ${pedido.direccionCalle} ${pedido.direccionNumero || ''}, ${pedido.direccionCiudad}</p>
-          </div>
+    <!-- Info entrega -->
+    ${infoBox(`
+      <p style="margin:0 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;
+                 letter-spacing:0.08em;color:${T.mutedLight};">Entrega</p>
+      <p style="margin:0;font-size:13px;color:${T.dark};">
+        <strong>${pedido.metodoEntrega?.nombre || 'A confirmar'}</strong><br>
+        <span style="color:${T.muted};">${pedido.direccionCalle} ${pedido.direccionNumero || ''}, ${pedido.direccionCiudad}</span>
+      </p>`)}
 
-          ${bloqueContacto(pedido.tienda)}
-
-          <hr style="border: none; border-top: 1px solid #edf2f7; margin: 30px 0;">
-          <p style="font-size: 0.8em; color: #A0AEC0; text-align: center;">Gracias por confiar en ${nombreTienda}.</p>
-        </div>
-      </body>
-    </html>
-  `;
+    ${bloqueContacto(pedido.tienda)}`;
 
   return enviarEmail({
     para: email,
-    asunto: `Confirmación de pedido #${pedido.id} - ${nombreTienda}`,
-    html,
+    asunto: `✅ Pedido #${pedido.id} recibido — ${nombreTienda}`,
+    html: layout(contenido, nombreTienda),
   });
 }
 
 export async function enviarEmailNuevoPedidoAlOwner(
-  emailOwner: string,
-  nombreOwner: string,
-  pedido: any,
-  nombreTienda: string
+  emailOwner: string, nombreOwner: string, pedido: any, nombreTienda: string
 ): Promise<boolean> {
   const urlDashboard = `${env.FRONTEND_URL}/dashboard/pedidos`;
-  const html = `
-    <html dir="ltr">
-      <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #2D3748;">¡Nuevo pedido recibido! 🚀</h2>
-          <p>Hola ${nombreOwner}, has recibido un nuevo pedido en <strong>${nombreTienda}</strong>.</p>
+  const contenido = `
+    ${badge('Nuevo pedido 🚀', T.accent)}
+    <div style="margin-top:24px;">
+      ${h1('¡Nuevo pedido recibido!')}
+      ${p(`Hola <strong style="color:${T.dark};">${nombreOwner}</strong>, acaba de entrar un nuevo pedido en <strong>${nombreTienda}</strong>.`)}
+    </div>
 
-          <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin: 25px 0;">
-            <p style="margin: 0;"><strong>Pedido:</strong> #${pedido.id}</p>
-            <p style="margin: 5px 0;"><strong>Cliente:</strong> ${pedido.compradorNombre}</p>
-            <p style="margin: 5px 0;"><strong>Teléfono:</strong> ${pedido.compradorTel}</p>
-            <p style="margin: 5px 0;"><strong>Total:</strong> $${Number(pedido.total).toLocaleString()}</p>
-            <p style="margin: 5px 0;"><strong>Método de entrega:</strong> ${pedido.metodoEntrega?.nombre || 'No especificado'}</p>
-          </div>
+    <!-- Datos del pedido -->
+    <table width="100%" cellpadding="0" cellspacing="0"
+           style="background:${T.bg};border-radius:12px;overflow:hidden;margin:20px 0;">
+      <tbody>
+        ${[
+          ['Pedido', `#${pedido.id}`],
+          ['Cliente', pedido.compradorNombre],
+          ['Teléfono', pedido.compradorTel],
+          ['Total', `$${Number(pedido.total).toLocaleString('es-AR')}`],
+          ['Entrega', pedido.metodoEntrega?.nombre || 'No especificado'],
+        ].map(([k, v], i) => `
+        <tr style="${i % 2 === 0 ? `background:${T.borderLight};` : ''}">
+          <td style="padding:11px 16px;font-size:12px;color:${T.mutedLight};
+                     font-weight:700;text-transform:uppercase;letter-spacing:0.08em;width:40%;">${k}</td>
+          <td style="padding:11px 16px;font-size:13px;color:${T.dark};font-weight:600;">${v}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
 
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${urlDashboard}"
-               style="background-color: #2D3748; color: white; padding: 14px 35px;
-                      text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-              Gestionar Pedido en Dashboard
-            </a>
-          </div>
-
-          <hr style="border: none; border-top: 1px solid #edf2f7; margin: 30px 0;">
-          <p style="color: #A0AEC0; font-size: 0.8em; text-align: center;">
-            Este es un aviso automático de tu sistema de ventas.
-          </p>
-        </div>
-      </body>
-    </html>
-  `;
+    ${botonPrimario('Ver pedido en el dashboard →', urlDashboard)}`;
 
   return enviarEmail({
     para: emailOwner,
-    asunto: `🚀 ¡Nuevo pedido #${pedido.id} en ${nombreTienda}!`,
-    html,
+    asunto: `🚀 Nuevo pedido #${pedido.id} — ${nombreTienda}`,
+    html: layout(contenido, nombreTienda),
   });
 }
 
 export async function enviarEmailEstadoPedidoActualizado(
-  email: string,
-  nombre: string,
-  pedido: any,
-  nuevoEstado: string,
-  nombreTienda: string
+  email: string, nombre: string, pedido: any, nuevoEstado: string, nombreTienda: string
 ): Promise<boolean> {
   const estados: Record<string, { label: string; color: string; msg: string; emoji: string }> = {
     CONFIRMADO: {
-      label: 'Confirmado',
-      color: '#3182CE',
-      msg: 'Tu pedido ha sido confirmado. ¡Ya estamos preparándolo!',
-      emoji: '✅',
+      label: 'Confirmado',  color: '#3182CE',
+      msg: 'Tu pedido fue confirmado. ¡Ya estamos preparándolo con cuidado!', emoji: '✅',
     },
     EN_CAMINO: {
-      label: 'En Camino',
-      color: '#805AD5',
-      msg: '¡Buenas noticias! Tu pedido ya está en camino.',
-      emoji: '🚚',
+      label: 'En camino',   color: T.purple,
+      msg: '¡Buenas noticias! Tu pedido ya está en camino hacia vos.', emoji: '🚚',
     },
     ENTREGADO: {
-      label: 'Entregado',
-      color: '#38A169',
-      msg: 'Tu pedido ha sido marcado como entregado. ¡Que lo disfrutes!',
-      emoji: '🎉',
+      label: 'Entregado',   color: '#38A169',
+      msg: 'Tu pedido fue entregado exitosamente. ¡Que lo disfrutes!', emoji: '🎉',
     },
     CANCELADO: {
-      label: 'Cancelado',
-      color: '#E53E3E',
-      msg: 'Lamentablemente tu pedido ha sido cancelado. Contactanos si tenés dudas.',
-      emoji: '❌',
+      label: 'Cancelado',   color: '#E53E3E',
+      msg: 'Lamentablemente tu pedido fue cancelado. Contactanos si tenés dudas.', emoji: '❌',
     },
   };
 
-  const info = estados[nuevoEstado] || {
-    label: nuevoEstado,
-    color: '#4A5568',
-    msg: 'El estado de tu pedido ha cambiado.',
-    emoji: '📋',
+  const info = estados[nuevoEstado] ?? {
+    label: nuevoEstado, color: T.muted,
+    msg: 'El estado de tu pedido fue actualizado.', emoji: '📋',
   };
 
-  // Bloques condicionales
-  const bloqueEntrega = nuevoEstado === 'CONFIRMADO' ? mensajeEntregaConfirmado(pedido) : '';
-  const bloqueSeg = nuevoEstado === 'EN_CAMINO' ? bloqueSeguimiento(pedido) : '';
-
-  // Si se marcó ENTREGADO, enviamos la factura después de este email
   if (nuevoEstado === 'ENTREGADO') {
-    // No esperamos, disparamos en paralelo
     enviarFactura(email, nombre, pedido, nombreTienda).catch(() => {});
   }
 
-  const html = `
-    <html dir="ltr">
-      <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+  const contenido = `
+    ${badge(`${info.emoji} ${info.label}`, info.color)}
+    <div style="margin-top:24px;">
+      ${h1(`Actualización de pedido #${pedido.id ?? pedido}`)}
+      ${p(`Hola <strong style="color:${T.dark};">${nombre}</strong>, ${info.msg}`)}
+    </div>
 
-          <h2 style="color: ${info.color};">${info.emoji} Actualización de tu pedido #${pedido.id ?? pedido}</h2>
-          <p>Hola <strong>${nombre}</strong>,</p>
-          <p>${info.msg}</p>
+    <!-- Estado visual -->
+    <div style="text-align:center;margin:24px 0;padding:24px 20px;
+                background:${T.bg};border-radius:12px;border:1px solid ${T.borderLight};">
+      <p style="margin:0 0 6px;font-size:11px;color:${T.mutedLight};
+                 text-transform:uppercase;letter-spacing:0.1em;">Estado actual</p>
+      <p style="margin:0;font-size:30px;font-weight:900;color:${info.color};
+                 font-family:'Georgia',serif;letter-spacing:-0.02em;">${info.label}</p>
+    </div>
 
-          <div style="text-align: center; margin: 24px 0; padding: 20px; background-color: #f7fafc; border-radius: 8px;">
-            <span style="font-size: 0.85em; color: #718096; text-transform: uppercase; letter-spacing: 1px;">Nuevo Estado:</span><br>
-            <strong style="font-size: 1.5em; color: ${info.color};">${info.label}</strong>
-          </div>
-
-          ${bloqueEntrega}
-          ${bloqueSeg}
-
-          ${bloqueContacto(pedido.tienda)}
-
-          <hr style="border: none; border-top: 1px solid #edf2f7; margin: 30px 0;">
-          <p style="color: #A0AEC0; font-size: 0.8em; text-align: center;">
-            Gracias por confiar en ${nombreTienda}.
-          </p>
-        </div>
-      </body>
-    </html>
-  `;
+    ${nuevoEstado === 'CONFIRMADO' ? mensajeEntregaConfirmado(pedido) : ''}
+    ${nuevoEstado === 'EN_CAMINO'  ? bloqueSeguimiento(pedido) : ''}
+    ${bloqueContacto(pedido.tienda)}`;
 
   return enviarEmail({
     para: email,
-    asunto: `${info.emoji} Actualización de pedido #${pedido.id ?? pedido} - ${nombreTienda}`,
-    html,
+    asunto: `${info.emoji} Tu pedido #${pedido.id ?? pedido} está ${info.label} — ${nombreTienda}`,
+    html: layout(contenido, nombreTienda),
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FACTURA / COMPROBANTE DE COMPRA
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── FACTURA / COMPROBANTE ────────────────────────────────────────────────────
 
 export async function enviarFactura(
-  email: string,
-  nombre: string,
-  pedido: any,
-  nombreTienda: string
+  email: string, nombre: string, pedido: any, nombreTienda: string
 ): Promise<boolean> {
-  // Número de comprobante formateado
   const nroComprobante = `FC-${String(pedido.id).padStart(6, '0')}`;
   const compradorNombre = nombre || pedido.compradorNombre;
-  const fechaEmision = new Date(pedido.actualizadoEn || pedido.creadoEn).toLocaleDateString('es-AR', {
-    year: 'numeric', month: 'long', day: 'numeric'
-  });
+  const fechaEmision = new Date(pedido.actualizadoEn || pedido.creadoEn)
+    .toLocaleDateString('es-AR', { year:'numeric', month:'long', day:'numeric' });
 
-  // Items de la factura
   const itemsHtml = (pedido.items ?? []).map((item: any) => `
     <tr>
-      <td style="padding: 12px 8px; border-bottom: 1px solid #edf2f7; font-size: 13px; color: #2d3748;">
+      <td style="padding:12px 8px;border-bottom:1px solid ${T.borderLight};
+                 font-size:13px;color:${T.dark};">
         <strong>${item.nombreProd}</strong>
-        ${item.nombreVar ? `<br><span style="font-size: 11px; color: #718096;">${item.nombreVar}</span>` : ''}
+        ${item.nombreVar ? `<br><span style="font-size:11px;color:${T.mutedLight};">${item.nombreVar}</span>` : ''}
       </td>
-      <td style="padding: 12px 8px; border-bottom: 1px solid #edf2f7; text-align: center; font-size: 13px; color: #4a5568;">
-        ${item.cantidad}
-      </td>
-      <td style="padding: 12px 8px; border-bottom: 1px solid #edf2f7; text-align: right; font-size: 13px; color: #4a5568;">
+      <td style="padding:12px 8px;border-bottom:1px solid ${T.borderLight};
+                 text-align:center;font-size:13px;color:${T.muted};">${item.cantidad}</td>
+      <td style="padding:12px 8px;border-bottom:1px solid ${T.borderLight};
+                 text-align:right;font-size:13px;color:${T.muted};">
         $${Number(item.precioUnit).toLocaleString('es-AR')}
       </td>
-      <td style="padding: 12px 8px; border-bottom: 1px solid #edf2f7; text-align: right; font-size: 13px; font-weight: 600; color: #2d3748;">
+      <td style="padding:12px 8px;border-bottom:1px solid ${T.borderLight};
+                 text-align:right;font-size:13px;font-weight:700;color:${T.dark};">
         $${Number(item.subtotal).toLocaleString('es-AR')}
       </td>
-    </tr>
-  `).join('');
+    </tr>`).join('');
 
-  const subtotal = Number(pedido.subtotal ?? pedido.total);
+  const subtotal   = Number(pedido.subtotal ?? pedido.total);
   const costoEnvio = Number(pedido.costoEnvio ?? 0);
-  const total = Number(pedido.total);
+  const total      = Number(pedido.total);
+  const wsp        = pedido.tienda?.whatsapp;
+  const wspN       = wsp ? wsp.replace(/\D/g,'') : '';
+  const instagram  = pedido.tienda?.instagram ?? '';
+  const sitioWeb   = pedido.tienda?.sitioWeb ?? '';
 
-  // Datos tienda
-  const wsp = pedido.tienda?.whatsapp;
-  const wspNumLimpio = wsp ? wsp.replace(/\D/g, '') : '';
-  const sitioWeb = pedido.tienda?.sitioWeb ?? '';
-  const instagram = pedido.tienda?.instagram ?? '';
+  // El comprobante tiene su propio layout especial (sin card genérica)
+  const html = `<!DOCTYPE html>
+<html dir="ltr" lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:${T.bg};font-family:'Georgia',serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"
+         style="background-color:${T.bg};min-height:100vh;">
+    <tr>
+      <td align="center" style="padding:32px 16px 48px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="max-width:600px;background:${T.surface};border-radius:16px;
+                      overflow:hidden;border:1px solid ${T.border};
+                      box-shadow:0 8px 40px rgba(23,18,15,0.08);">
 
-  const html = `
-  <!DOCTYPE html>
-  <html dir="ltr" lang="es">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  </head>
-  <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: Arial, sans-serif;">
-    <div style="max-width: 640px; margin: 32px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
-
-      <!-- HEADER -->
-      <div style="background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%); padding: 32px 40px; text-align: center;">
-        <p style="margin: 0 0 4px; font-size: 11px; color: #a0aec0; text-transform: uppercase; letter-spacing: 2px;">Comprobante de Compra</p>
-        <h1 style="margin: 0; font-size: 26px; color: #ffffff; font-weight: 800; letter-spacing: -0.5px;">${nombreTienda}</h1>
-        <p style="margin: 12px 0 0; font-size: 13px; color: #68d391; font-weight: 700;">✓ Pedido Entregado Exitosamente</p>
-      </div>
-
-      <!-- NRO COMPROBANTE + FECHA -->
-      <div style="background: #f7fafc; padding: 20px 40px; display: flex; border-bottom: 1px solid #edf2f7;">
-        <table style="width: 100%; border-collapse: collapse;">
+          <!-- HEADER FACTURA -->
           <tr>
-            <td style="font-size: 12px; color: #718096; text-transform: uppercase; letter-spacing: 1px;">Comprobante N°</td>
-            <td style="font-size: 12px; color: #718096; text-transform: uppercase; letter-spacing: 1px; text-align: right;">Fecha de Emisión</td>
-          </tr>
-          <tr>
-            <td style="font-size: 20px; font-weight: 800; color: #2d3748; padding-top: 4px;">${nroComprobante}</td>
-            <td style="font-size: 14px; font-weight: 600; color: #4a5568; text-align: right; padding-top: 4px;">${fechaEmision}</td>
-          </tr>
-        </table>
-      </div>
-
-      <!-- DATOS DEL CLIENTE -->
-      <div style="padding: 24px 40px; border-bottom: 1px solid #edf2f7;">
-        <p style="margin: 0 0 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #a0aec0;">Datos del Comprador</p>
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 4px 0; font-size: 13px; color: #2d3748;"><strong>Nombre:</strong> ${compradorNombre}</td>
-            <td style="padding: 4px 0; font-size: 13px; color: #2d3748; text-align: right;"><strong>Email:</strong> ${pedido.compradorEmail}</td>
-          </tr>
-          <tr>
-            <td style="padding: 4px 0; font-size: 13px; color: #4a5568;" colspan="2">
-              <strong>Dirección:</strong> ${pedido.direccionCalle} ${pedido.direccionNumero ?? ''}, ${pedido.direccionCiudad}, ${pedido.direccionProv}
+            <td style="background:${T.dark};padding:32px 40px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <p style="margin:0 0 4px;font-size:10px;color:rgba(255,255,255,0.45);
+                               text-transform:uppercase;letter-spacing:0.16em;">Comprobante de Compra</p>
+                    <span style="font-family:'Georgia',serif;font-size:26px;font-weight:900;
+                                 letter-spacing:-0.04em;color:#fff;">
+                      Tiendi<span style="color:${T.accent};">Zi</span>
+                    </span>
+                    <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.55);">${nombreTienda}</p>
+                  </td>
+                  <td style="text-align:right;vertical-align:top;">
+                    <span style="display:inline-block;padding:5px 14px;border-radius:99px;
+                                 background:#38a16922;color:#68d391;font-size:12px;font-weight:700;">
+                      ✓ Entregado
+                    </span>
+                  </td>
+                </tr>
+              </table>
+              <!-- Franja naranja decorativa -->
+              <div style="margin-top:20px;height:3px;border-radius:99px;
+                          background:linear-gradient(90deg,${T.accent},${T.purple});"></div>
             </td>
           </tr>
-        </table>
-      </div>
 
-      <!-- TABLA DE PRODUCTOS -->
-      <div style="padding: 24px 40px;">
-        <p style="margin: 0 0 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #a0aec0;">Detalle de Productos</p>
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="background-color: #2d3748;">
-              <th style="padding: 10px 8px; text-align: left; font-size: 11px; color: #e2e8f0; text-transform: uppercase; letter-spacing: 1px;">Producto</th>
-              <th style="padding: 10px 8px; text-align: center; font-size: 11px; color: #e2e8f0; text-transform: uppercase; letter-spacing: 1px;">Cant.</th>
-              <th style="padding: 10px 8px; text-align: right; font-size: 11px; color: #e2e8f0; text-transform: uppercase; letter-spacing: 1px;">Precio Unit.</th>
-              <th style="padding: 10px 8px; text-align: right; font-size: 11px; color: #e2e8f0; text-transform: uppercase; letter-spacing: 1px;">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>${itemsHtml}</tbody>
-        </table>
-
-        <!-- TOTALES -->
-        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+          <!-- NRO + FECHA -->
           <tr>
-            <td style="padding: 8px; text-align: right; font-size: 13px; color: #718096;">Subtotal productos:</td>
-            <td style="padding: 8px; text-align: right; font-size: 13px; color: #4a5568; font-weight: 600; width: 120px;">$${subtotal.toLocaleString('es-AR')}</td>
-          </tr>
-          ${costoEnvio > 0 ? `
-          <tr>
-            <td style="padding: 8px; text-align: right; font-size: 13px; color: #718096;">Costo de envío:</td>
-            <td style="padding: 8px; text-align: right; font-size: 13px; color: #4a5568; font-weight: 600; width: 120px;">$${costoEnvio.toLocaleString('es-AR')}</td>
-          </tr>` : '<tr><td style="padding: 8px; text-align: right; font-size: 12px; color: #a0aec0;">Envío:</td><td style="padding: 8px; text-align: right; font-size: 12px; color: #68d391; font-weight: 700; width: 120px;">GRATIS</td></tr>'}
-          <tr style="background-color: #2d3748; border-radius: 8px;">
-            <td style="padding: 14px 8px; text-align: right; font-size: 14px; color: #e2e8f0; font-weight: 700; border-radius: 6px 0 0 6px;">TOTAL ABONADO:</td>
-            <td style="padding: 14px 8px; text-align: right; font-size: 18px; color: #68d391; font-weight: 900; width: 120px; border-radius: 0 6px 6px 0;">$${total.toLocaleString('es-AR')}</td>
-          </tr>
-        </table>
-      </div>
-
-      <!-- INFO DE PAGO Y ENTREGA -->
-      <div style="padding: 0 40px 24px; border-bottom: 1px solid #edf2f7;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="width: 50%; padding: 12px 16px; background: #f7fafc; border-radius: 8px;">
-              <p style="margin: 0 0 4px; font-size: 11px; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px;">Método de Pago</p>
-              <p style="margin: 0; font-size: 13px; font-weight: 600; color: #2d3748;">${pedido.metodoPago?.nombre ?? 'No especificado'}</p>
-            </td>
-            <td style="width: 4px;"></td>
-            <td style="width: 50%; padding: 12px 16px; background: #f7fafc; border-radius: 8px;">
-              <p style="margin: 0 0 4px; font-size: 11px; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px;">Método de Entrega</p>
-              <p style="margin: 0; font-size: 13px; font-weight: 600; color: #2d3748;">${pedido.metodoEntrega?.nombre ?? 'No especificado'}</p>
+            <td style="padding:20px 40px;background:${T.bg};border-bottom:1px solid ${T.borderLight};">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <p style="margin:0 0 3px;font-size:10px;color:${T.mutedLight};
+                               text-transform:uppercase;letter-spacing:0.1em;">Comprobante N°</p>
+                    <p style="margin:0;font-size:22px;font-weight:900;color:${T.dark};
+                               letter-spacing:-0.02em;">${nroComprobante}</p>
+                  </td>
+                  <td style="text-align:right;">
+                    <p style="margin:0 0 3px;font-size:10px;color:${T.mutedLight};
+                               text-transform:uppercase;letter-spacing:0.1em;">Fecha de emisión</p>
+                    <p style="margin:0;font-size:14px;font-weight:600;color:${T.muted};">${fechaEmision}</p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
+
+          <!-- DATOS COMPRADOR -->
+          <tr>
+            <td style="padding:24px 40px;border-bottom:1px solid ${T.borderLight};">
+              <p style="margin:0 0 12px;font-size:10px;font-weight:700;text-transform:uppercase;
+                         letter-spacing:0.1em;color:${T.mutedLight};">Datos del comprador</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-size:13px;color:${T.dark};padding:3px 0;">
+                    <strong>Nombre:</strong> ${compradorNombre}
+                  </td>
+                  <td style="font-size:13px;color:${T.dark};text-align:right;padding:3px 0;">
+                    <strong>Email:</strong> ${pedido.compradorEmail}
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="font-size:13px;color:${T.muted};padding:3px 0;">
+                    <strong>Dirección:</strong>
+                    ${pedido.direccionCalle} ${pedido.direccionNumero ?? ''},
+                    ${pedido.direccionCiudad}, ${pedido.direccionProv}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- TABLA PRODUCTOS -->
+          <tr>
+            <td style="padding:24px 40px;">
+              <p style="margin:0 0 14px;font-size:10px;font-weight:700;text-transform:uppercase;
+                         letter-spacing:0.1em;color:${T.mutedLight};">Detalle de productos</p>
+              <table width="100%" cellpadding="0" cellspacing="0"
+                     style="border:1px solid ${T.borderLight};border-radius:10px;overflow:hidden;">
+                <thead>
+                  <tr style="background:${T.dark};">
+                    <th style="padding:10px 8px;text-align:left;font-size:10px;color:rgba(255,255,255,0.65);
+                               text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Producto</th>
+                    <th style="padding:10px 8px;text-align:center;font-size:10px;color:rgba(255,255,255,0.65);
+                               text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Cant.</th>
+                    <th style="padding:10px 8px;text-align:right;font-size:10px;color:rgba(255,255,255,0.65);
+                               text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">P. Unit.</th>
+                    <th style="padding:10px 8px;text-align:right;font-size:10px;color:rgba(255,255,255,0.65);
+                               text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>${itemsHtml}</tbody>
+              </table>
+
+              <!-- Totales -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+                <tr>
+                  <td style="padding:7px;text-align:right;font-size:12px;color:${T.mutedLight};">
+                    Subtotal productos:
+                  </td>
+                  <td style="padding:7px;text-align:right;font-size:13px;color:${T.muted};
+                             font-weight:600;width:130px;">
+                    $${subtotal.toLocaleString('es-AR')}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:7px;text-align:right;font-size:12px;color:${T.mutedLight};">Envío:</td>
+                  <td style="padding:7px;text-align:right;font-size:13px;width:130px;
+                             ${costoEnvio > 0 ? `color:${T.muted};font-weight:600;` : `color:#38a169;font-weight:700;`}">
+                    ${costoEnvio > 0 ? `$${costoEnvio.toLocaleString('es-AR')}` : 'GRATIS'}
+                  </td>
+                </tr>
+                <tr style="background:${T.dark};border-radius:8px;">
+                  <td style="padding:14px 8px;text-align:right;font-size:13px;
+                             color:rgba(255,255,255,0.75);font-weight:700;">
+                    TOTAL ABONADO:
+                  </td>
+                  <td style="padding:14px 8px;text-align:right;font-size:20px;font-weight:900;
+                             color:${T.accent};width:130px;">
+                    $${total.toLocaleString('es-AR')}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- PAGO Y ENTREGA -->
+          <tr>
+            <td style="padding:0 40px 28px;border-bottom:1px solid ${T.borderLight};">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="width:48%;padding:14px 16px;background:${T.bg};border-radius:10px;
+                             vertical-align:top;">
+                    <p style="margin:0 0 4px;font-size:10px;color:${T.mutedLight};
+                               text-transform:uppercase;letter-spacing:0.1em;">Método de pago</p>
+                    <p style="margin:0;font-size:13px;font-weight:700;color:${T.dark};">
+                      ${pedido.metodoPago?.nombre ?? 'No especificado'}
+                    </p>
+                  </td>
+                  <td style="width:4%;"></td>
+                  <td style="width:48%;padding:14px 16px;background:${T.bg};border-radius:10px;
+                             vertical-align:top;">
+                    <p style="margin:0 0 4px;font-size:10px;color:${T.mutedLight};
+                               text-transform:uppercase;letter-spacing:0.1em;">Método de entrega</p>
+                    <p style="margin:0;font-size:13px;font-weight:700;color:${T.dark};">
+                      ${pedido.metodoEntrega?.nombre ?? 'No especificado'}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="padding:28px 40px;background:${T.bg};text-align:center;">
+              <p style="margin:0 0 6px;font-size:14px;color:${T.dark};font-weight:700;">
+                ¡Gracias por tu compra en ${nombreTienda}! 🎉
+              </p>
+              <p style="margin:0 0 18px;font-size:12px;color:${T.mutedLight};">
+                Guardá este email como comprobante de tu compra.
+              </p>
+              <div>
+                ${wsp        ? `<a href="https://wa.me/${wspN}" style="margin:0 8px;font-size:12px;color:${T.green};text-decoration:none;font-weight:700;">💬 WhatsApp</a>` : ''}
+                ${instagram  ? `<a href="https://instagram.com/${instagram.replace('@','')}" style="margin:0 8px;font-size:12px;color:#e1306c;text-decoration:none;font-weight:700;">📸 Instagram</a>` : ''}
+                ${sitioWeb   ? `<a href="${sitioWeb}" style="margin:0 8px;font-size:12px;color:${T.purple};text-decoration:none;font-weight:700;">🌐 Sitio Web</a>` : ''}
+              </div>
+              <div style="margin-top:16px;height:2px;border-radius:99px;
+                          background:linear-gradient(90deg,${T.accent},${T.purple});
+                          opacity:0.3;"></div>
+              <p style="margin:14px 0 0;font-size:10px;color:${T.mutedLight};">
+                Comprobante automático · ${nombreTienda} · Powered by
+                <strong style="color:${T.accent};">TiendiZi</strong>
+              </p>
+            </td>
+          </tr>
+
         </table>
-      </div>
-
-      <!-- FOOTER -->
-      <div style="padding: 24px 40px; text-align: center; background: #f7fafc;">
-        <p style="margin: 0 0 8px; font-size: 13px; color: #4a5568;">¡Gracias por tu compra en <strong>${nombreTienda}</strong>! 🎉</p>
-        <p style="margin: 0 0 16px; font-size: 12px; color: #a0aec0;">Guardá este email como comprobante de tu compra.</p>
-        <div style="display: inline-flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-          ${wsp ? `<a href="https://wa.me/${wspNumLimpio}" style="font-size: 12px; color: #25D366; text-decoration: none; font-weight: 600;">💬 WhatsApp</a>` : ''}
-          ${instagram ? `<a href="https://instagram.com/${instagram.replace('@','')}" style="font-size: 12px; color: #e1306c; text-decoration: none; font-weight: 600;">📸 Instagram</a>` : ''}
-          ${sitioWeb ? `<a href="${sitioWeb}" style="font-size: 12px; color: #3182ce; text-decoration: none; font-weight: 600;">🌐 Sitio Web</a>` : ''}
-        </div>
-        <p style="margin: 20px 0 0; font-size: 11px; color: #cbd5e0;">Este es un comprobante automático · ${nombreTienda}</p>
-      </div>
-
-    </div>
-  </body>
-  </html>
-  `;
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 
   return enviarEmail({
     para: email,
-    asunto: `🧾 Tu comprobante de compra en ${nombreTienda} — ${nroComprobante}`,
+    asunto: `🧾 Comprobante de compra — ${nroComprobante} · ${nombreTienda}`,
     html,
   });
 }

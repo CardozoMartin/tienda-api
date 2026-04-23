@@ -14,7 +14,7 @@ import {
   ActualizarAboutUsDto,
   ActualizarMarqueeDto,
 } from "./tiendas.dto";
-import { uploadImageToCloudinary } from "../../utils/cloudinary";
+import { uploadImageToCloudinary } from "@/utils/cloudinary";
 import { cacheService } from "../../utils/cache";
 import { logger } from "../../utils/logger";
 
