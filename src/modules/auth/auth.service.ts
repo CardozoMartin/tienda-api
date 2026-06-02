@@ -67,7 +67,7 @@ export class AuthService {
       telefono: datos.telefono,
       tokenVerificacion,
       tokenVencVerificacion,
-      rol: datos.rol ?? RolUsuario.CLIENT,
+      rol: datos.rol ?? RolUsuario.OWNER,
     });
 
     // Enviamos el email de verificación
