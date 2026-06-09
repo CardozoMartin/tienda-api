@@ -12,9 +12,13 @@ import { logStream } from './utils/logger';
 export function crearApp(): Application {
   const app = express();
 
-  const corsOrigins = env.esProduccion
-    ? [env.CORS_ORIGIN, 'https://apptiendizi.netlify.app']
-    : [env.CORS_ORIGIN, 'http://localhost:5174', 'http://localhost:5173', 'https://apptiendizi.netlify.app'];
+  const corsOrigins = new Set([
+    env.CORS_ORIGIN,
+    'https://tiendizi.netlify.app',
+    'https://apptiendizi.netlify.app',
+    'http://localhost:5173',
+    'http://localhost:5174',
+  ]);
 
 
   // SEGURIDAD
@@ -28,7 +32,14 @@ export function crearApp(): Application {
   // CORS: solo permitimos el origen configurado en .env
   app.use(
     cors({
-      origin: corsOrigins,
+      origin: (origin, callback) => {
+        if (!origin || corsOrigins.has(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error(`Origen no permitido por CORS: ${origin}`));
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'x-session-id'],
