@@ -1,22 +1,43 @@
 import { Request, Response } from 'express';
 import { AiService } from './ai.service';
 import { prisma } from '../../config/prisma';
+import { RequestAutenticado } from '../../types';
 
 export class AiController {
   private aiService = new AiService();
 
   public generatePost = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { productoId, redSocial = 'Instagram', tono = 'Profesional' } = req.body;
+      const {
+        productoId,
+        redSocial = 'Instagram',
+        tono = 'Profesional',
+        objetivo = 'venta',
+      } = req.body;
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
 
       if (!productoId) {
         res.status(400).json({ success: false, message: 'El ID del producto es requerido.' });
         return;
       }
 
-      // Obtener producto de la BD
-      const producto = await prisma.producto.findUnique({
-        where: { id: Number(productoId) }
+      const producto = await prisma.producto.findFirst({
+        where: {
+          id: Number(productoId),
+          tienda: { usuarioId },
+        },
+        include: {
+          categoria: true,
+          tags: true,
+          imagenes: { orderBy: { orden: 'asc' } },
+          variantes: true,
+          tienda: {
+            include: {
+              metodosPago: { include: { metodoPago: true } },
+              metodosEntrega: { include: { metodoEntrega: true } },
+            },
+          },
+        },
       });
 
       if (!producto) {
@@ -24,7 +45,11 @@ export class AiController {
         return;
       }
 
-      const generatedPost = await this.aiService.generateSocialMediaPost(producto, redSocial, tono);
+      const generatedPost = await this.aiService.generateSocialMediaKit(producto, {
+        redSocial,
+        tono,
+        objetivo,
+      });
 
       res.status(200).json({ success: true, data: generatedPost });
     } catch (error: any) {
