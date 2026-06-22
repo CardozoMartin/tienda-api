@@ -14,10 +14,9 @@ export function crearApp(): Application {
 
   const corsOrigins = new Set([
     env.CORS_ORIGIN,
-    'https://tiendizi.netlify.app',
-    'https://apptiendizi.netlify.app',
     'http://localhost:5173',
     'http://localhost:5174',
+    ...env.CORS_ORIGIN_EXTRA.split(',').map(o => o.trim()).filter(Boolean),
   ]);
 
 
