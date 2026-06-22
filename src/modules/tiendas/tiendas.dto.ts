@@ -143,3 +143,18 @@ export const ActualizarMarqueeSchema = z.object({
 });
 
 export type ActualizarMarqueeDto = z.infer<typeof ActualizarMarqueeSchema>;
+
+// ─────────────────────────────────────────────
+// CAMBIAR SLUG
+// ─────────────────────────────────────────────
+
+export const CambiarSlugSchema = z.object({
+  slug: z
+    .string({ required_error: 'El slug es requerido' })
+    .trim()
+    .min(3, 'El slug debe tener al menos 3 caracteres')
+    .max(60, 'El slug no puede tener más de 60 caracteres')
+    .regex(/^[a-z0-9]+(?:[-][a-z0-9]+)*$/, 'Solo letras minúsculas, números y guiones'),
+});
+
+export type CambiarSlugDto = z.infer<typeof CambiarSlugSchema>;

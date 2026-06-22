@@ -12,6 +12,7 @@ import {
   FiltrosTiendasDto,
   ActualizarAboutUsDto,
   ActualizarMarqueeDto,
+  CambiarSlugDto,
 } from './tiendas.dto';
 import { TiendasService } from './tiendas.service';
 
@@ -303,6 +304,67 @@ export class TiendasController {
       const datos = req.body as ActualizarMarqueeDto;
       const resultado = await this.service.actualizarMarquee(usuarioId, datos);
       responderOk(res, resultado, 'Items del carrusel de marcas actualizados');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ── Logo ──
+
+  /**
+   * POST /tiendas/mi-tienda/logo
+   */
+  subirLogo = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const file = req.file as Express.Multer.File;
+      if (!file) throw new ErrorApi('No se subió ninguna imagen', 400);
+      const resultado = await this.service.subirLogo(usuarioId, file);
+      responderOk(res, resultado, 'Logo actualizado');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * DELETE /tiendas/mi-tienda/logo
+   */
+  eliminarLogo = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.eliminarLogo(usuarioId);
+      responderOk(res, resultado, 'Logo eliminado');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ── Slug ──
+
+  /**
+   * PATCH /tiendas/mi-tienda/slug
+   */
+  cambiarSlug = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const datos = req.body as CambiarSlugDto;
+      const resultado = await this.service.cambiarSlug(usuarioId, datos);
+      responderOk(res, resultado, 'Slug actualizado');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /tiendas/mi-tienda/slug/verificar?slug=...
+   */
+  verificarSlug = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const { slug } = req.query as { slug: string };
+      if (!slug) throw new ErrorApi('El slug es requerido', 400);
+      const resultado = await this.service.verificarSlug(slug, usuarioId);
+      responderOk(res, resultado, resultado.disponible ? 'Slug disponible' : 'Slug no disponible');
     } catch (error) {
       next(error);
     }

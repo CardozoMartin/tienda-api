@@ -13,6 +13,7 @@ import {
   FiltrosTiendasDto,
   ActualizarAboutUsDto,
   ActualizarMarqueeDto,
+  CambiarSlugDto,
 } from "./tiendas.dto";
 import { uploadImageToCloudinary } from "@/utils/cloudinary";
 import { cacheService } from "../../utils/cache";
@@ -288,5 +289,44 @@ export class TiendasService {
     const resultado = await this.repository.actualizarMarquee(tienda.id, datos.items);
     this.invalidarCacheTienda(tienda.slug);
     return resultado;
+  }
+
+  // ── Logo ──
+
+  async subirLogo(usuarioId: number, file: Express.Multer.File) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const url = await uploadImageToCloudinary(file.buffer);
+    const resultado = await this.repository.actualizar(tienda.id, { logoUrl: url });
+    this.invalidarCacheTienda(tienda.slug);
+    return { logoUrl: url, tienda: resultado };
+  }
+
+  async eliminarLogo(usuarioId: number) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const resultado = await this.repository.actualizar(tienda.id, { logoUrl: null });
+    this.invalidarCacheTienda(tienda.slug);
+    return resultado;
+  }
+
+  // ── Slug ──
+
+  async cambiarSlug(usuarioId: number, datos: CambiarSlugDto) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const nuevoSlug = generarSlug(datos.slug);
+    const ocupado = await this.repository.existeSlug(nuevoSlug, tienda.id);
+    if (ocupado) {
+      throw new ErrorApi(`El slug "${nuevoSlug}" ya está en uso`, 409);
+    }
+    const slugAnterior = tienda.slug;
+    const resultado = await this.repository.actualizar(tienda.id, { slug: nuevoSlug });
+    this.invalidarCacheTienda(slugAnterior);
+    return resultado;
+  }
+
+  async verificarSlug(slug: string, usuarioId: number) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const normalizado = generarSlug(slug);
+    const ocupado = await this.repository.existeSlug(normalizado, tienda.id);
+    return { slug: normalizado, disponible: !ocupado };
   }
 }

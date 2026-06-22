@@ -14,6 +14,7 @@ import {
   FiltrosTiendasSchema,
   ActualizarAboutUsSchema,
   ActualizarMarqueeSchema,
+  CambiarSlugSchema,
 } from './tiendas.dto';
 import { uploadMultiple, uploadSingle } from '../../config/multer.config';
 
@@ -82,6 +83,14 @@ router.post(
 );
 router.delete('/mi-tienda/carrusel/:imagenId', ...soloOwner, controller.eliminarImagenCarrusel);
 router.put('/mi-tienda/carrusel/reordenar', ...soloOwner, controller.reordenarCarrusel);
+
+// Logo
+router.post('/mi-tienda/logo', ...soloOwner, uploadSingle, controller.subirLogo);
+router.delete('/mi-tienda/logo', ...soloOwner, controller.eliminarLogo);
+
+// Slug
+router.patch('/mi-tienda/slug', ...soloOwner, validar(CambiarSlugSchema), controller.cambiarSlug);
+router.get('/mi-tienda/slug/verificar', ...soloOwner, controller.verificarSlug);
 
 // About Us
 router.get('/mi-tienda/about-us', ...soloOwner, controller.obtenerAboutUs);
