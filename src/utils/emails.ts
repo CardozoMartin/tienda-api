@@ -290,9 +290,10 @@ export async function enviarEmailVerificacion(
 }
 
 export async function enviarEmailResetPassword(
-  email: string, nombre: string, tokenReset: string, nombreTienda: string = 'TiendiZi'
+  email: string, nombre: string, tokenReset: string, nombreTienda: string = 'TiendiZi', slugTienda?: string
 ): Promise<boolean> {
-  const url = `${env.FRONTEND_URL}/reset-password?token=${tokenReset}`;
+  const base = `${env.FRONTEND_URL}/reset-password?token=${tokenReset}`;
+  const url = slugTienda ? `${base}&slug=${slugTienda}` : base;
   const contenido = `
     ${badge('Seguridad de cuenta', T.purple)}
     <div style="margin-top:24px;">
@@ -312,9 +313,10 @@ export async function enviarEmailResetPassword(
 // ─── EMAILS CLIENTES ──────────────────────────────────────────────────────────
 
 export async function enviarEmailVerificacionAlCliente(
-  email: string, nombre: string, tokenVerificacion: string, nombreTienda: string
+  email: string, nombre: string, tokenVerificacion: string, nombreTienda: string, slugTienda?: string
 ): Promise<boolean> {
-  const url = `${env.FRONTEND_URL}/verify-email?token=${tokenVerificacion}`;
+  const base = `${env.FRONTEND_URL}/verify-email?token=${tokenVerificacion}`;
+  const url = slugTienda ? `${base}&slug=${slugTienda}` : base;
   const contenido = `
     ${badge('Bienvenida')}
     <div style="margin-top:24px;">

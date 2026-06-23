@@ -117,7 +117,7 @@ export class ProductosController {
       const productoId = parseInt(req.params['productoId'] as string, 10);
 
       const body = { ...req.body };
-      if (body.precioOferta === '') delete body.precioOferta;
+      if (body.precioOferta === '') body.precioOferta = null;
       if (body.categoriaId === '') delete body.categoriaId;
 
       const producto = await this.service.actualizar(

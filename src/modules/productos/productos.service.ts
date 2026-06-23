@@ -173,7 +173,7 @@ export class ProductosService {
       }
     }
 
-    if (sanitizedData.precioOferta === '') sanitizedData.precioOferta = undefined;
+    if (sanitizedData.precioOferta === '') sanitizedData.precioOferta = null;
     if (sanitizedData.categoriaId === '') sanitizedData.categoriaId = undefined;
 
     if (sanitizedData.stock !== undefined) {
@@ -186,7 +186,7 @@ export class ProductosService {
     if (sanitizedData.precio !== undefined) {
       sanitizedData.precio = Number(sanitizedData.precio);
     }
-    if (sanitizedData.precioOferta !== undefined) {
+    if (sanitizedData.precioOferta !== undefined && sanitizedData.precioOferta !== null) {
       sanitizedData.precioOferta = Number(sanitizedData.precioOferta);
     }
     if (sanitizedData.categoriaId !== undefined) {

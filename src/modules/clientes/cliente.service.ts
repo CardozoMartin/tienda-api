@@ -56,7 +56,7 @@ export class ClienteService {
     const tienda = await this.tiendarepo.buscarPorId(input.tiendaId);
     console.log('Tienda encontrada para email de verificación:', tienda);
     // Enviar email de verificación (sin await para no bloquear)
-    enviarEmailVerificacionAlCliente(input.email, input.nombre, tokenVerif, tienda.nombre).catch(
+    enviarEmailVerificacionAlCliente(input.email, input.nombre, tokenVerif, tienda.nombre, tienda.slug).catch(
       (err: Error) => console.error('Error enviando email verificación:', err)
     );
 
@@ -153,7 +153,7 @@ export class ClienteService {
 
     // Enviar email
     const tienda = await this.tiendarepo.buscarPorId(input.tiendaId);
-    await enviarEmailResetPassword(cliente.email, cliente.nombre, token, tienda.nombre);
+    await enviarEmailResetPassword(cliente.email, cliente.nombre, token, tienda.nombre, tienda.slug);
 
     return { mensaje: mensajeOk };
   }

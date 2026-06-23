@@ -28,7 +28,7 @@ export class ProductosRepository {
   async buscarPorNombre(nombre: string, tiendaId: number, excludeProductoId?: number) {
     const where: any = {
       tiendaId,
-      nombre: { equals: nombre.trim(), mode: 'insensitive' },
+      nombre: nombre.trim(),
     };
 
     if (excludeProductoId) {

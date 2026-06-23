@@ -97,10 +97,17 @@ export const CrearProductoSchema = ProductoBaseSchema.refine(
 export type CrearProductoDto = z.infer<typeof CrearProductoSchema>;
 
 // Para actualizar usamos el schema base (sin refine) con todos los campos opcionales
+// precioOferta también acepta null explícito para poder borrarlo
 export const ActualizarProductoSchema = ProductoBaseSchema.omit({
   variantes: true,
   tags: true,
-}).partial();
+}).partial().extend({
+  precioOferta: z.union([
+    z.coerce.number().positive('El precio de oferta debe ser mayor a 0').multipleOf(0.01),
+    z.literal(''),
+    z.null(),
+  ]).optional(),
+});
 
 export type ActualizarProductoDto = z.infer<typeof ActualizarProductoSchema>;
 
