@@ -22,9 +22,9 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
   CORS_ORIGIN_EXTRA: z.string().optional().default(""),
 
-  // Rate limiting
+  // Rate limiting (por IP). 1000 req cada 15 min es holgado para tiendas con tráfico real.
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
-  RATE_LIMIT_MAX: z.coerce.number().default(100),
+  RATE_LIMIT_MAX: z.coerce.number().default(1000),
 
   // Email SMTP
   SMTP_HOST: z.string().optional().default(""),
