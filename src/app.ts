@@ -12,6 +12,10 @@ import { logStream } from './utils/logger';
 export function crearApp(): Application {
   const app = express();
 
+  // El backend corre detrás de un proxy (Nginx) en producción.
+  // 'trust proxy: 1' permite que express-rate-limit lea la IP real del header X-Forwarded-For.
+  app.set('trust proxy', 1);
+
   const corsOrigins = new Set([
     env.CORS_ORIGIN,
     'http://localhost:5173',
