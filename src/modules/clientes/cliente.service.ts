@@ -203,6 +203,29 @@ export class ClienteService {
     };
   }
 
+  // ── Owner: listar clientes de su tienda ──
+
+  async listarClientesTienda(tiendaId: number, filtros: { busqueda?: string; pagina: number; limite: number }) {
+    return this.repo.listarPorTienda(tiendaId, filtros);
+  }
+
+  async obtenerDetalleCliente(clienteId: number, tiendaId: number) {
+    const cliente = await this.repo.obtenerDetalleOwner(clienteId, tiendaId);
+    if (!cliente) throw new ErrorApi('Cliente no encontrado', 404);
+
+    const pedidos = (cliente as any).pedidos ?? [];
+    const totalGastado = pedidos.reduce((sum: number, p: any) => sum + Number(p.total ?? 0), 0);
+
+    return {
+      ...cliente,
+      stats: {
+        totalPedidos: pedidos.length,
+        totalGastado,
+        pedidosAprobados: pedidos.filter((p: any) => p.estadoPago === 'APROBADO').length,
+      },
+    };
+  }
+
   //servicio para cambiar la contraseña del cliente autenticado, validando la contraseña actual y hasheando la nueva contraseña
   async cambiarPassword(clienteId: number, input: CambiarPasswordClienteInput) {
     // Obtener cliente

@@ -42,6 +42,12 @@ const envSchema = z.object({
 
   // Sentry
   SENTRY_DSN: z.string().optional().default(""),
+
+  // Mercado Pago
+  MP_ACCESS_TOKEN: z.string().optional().default(""),
+  MP_PUBLIC_KEY: z.string().optional().default(""),
+  MP_WEBHOOK_SECRET: z.string().optional().default(""),
+  MP_ENCRYPT_KEY: z.string().min(32, "MP_ENCRYPT_KEY debe tener al menos 32 caracteres").optional().default("00000000000000000000000000000000"),
 });
 
 

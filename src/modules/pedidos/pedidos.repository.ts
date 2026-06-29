@@ -91,6 +91,8 @@ export class PedidosRepository {
         tienda: {
           include: {
             usuario: true,
+            // Traemos la config de los métodos de pago de la tienda (alias/CBU de transferencia)
+            metodosPago: true,
           },
         },
       },
@@ -137,6 +139,18 @@ export class PedidosRepository {
     ]);
 
     return { datos, total };
+  }
+
+  async actualizarEstadoPago(id: number, estadoPago: string) {
+    return prisma.pedido.update({
+      where: { id },
+      data: { estadoPago: estadoPago as any },
+      include: {
+        items: { include: { producto: true, variante: true } },
+        metodoEntrega: true,
+        metodoPago: true,
+      },
+    });
   }
 
   async actualizarEstado(id: number, estado: EstadoPedido, notasOwner?: string, usuarioId?: number, nroSeguimiento?: string, urlSeguimiento?: string) {

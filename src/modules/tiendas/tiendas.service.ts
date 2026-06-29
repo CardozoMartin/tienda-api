@@ -8,8 +8,11 @@ import {
   ActualizarTiendaDto,
   ActualizarTemaDto,
   AgregarMetodoPagoDto,
+  ActualizarMetodoPagoDto,
   AgregarMetodoEntregaDto,
+  ActualizarMetodoEntregaDto,
   AgregarImagenCarruselDto,
+  ActualizarImagenCarruselDto,
   FiltrosTiendasDto,
   ActualizarAboutUsDto,
   ActualizarMarqueeDto,
@@ -92,7 +95,38 @@ export class TiendasService {
       logger.error("[TIENDAS] Error al incrementar vistas:", err)
     );
 
-    return tienda;
+    return this.sanitizarTiendaPublica(tienda);
+  }
+
+  /**
+   * Limpia datos sensibles antes de exponer la tienda públicamente.
+   * Del configExtra de cada método de pago solo dejamos los datos que el
+   * comprador necesita ver (transferencia: cbu/alias/banco/titular) y
+   * eliminamos cualquier credencial (tokens de Mercado Pago, etc.).
+   */
+  private sanitizarTiendaPublica(tienda: any) {
+    if (!tienda?.metodosPago) return tienda;
+
+    const CAMPOS_PUBLICOS = ['cbu', 'alias', 'banco', 'titular'];
+
+    const metodosPago = tienda.metodosPago
+      // Mercado Pago solo se ofrece al cliente si la conexión está verificada (estadoMp === 'activo').
+      .filter((mp: any) => {
+        const esMp = (mp.metodoPago?.nombre ?? '').toLowerCase().includes('mercado');
+        if (!esMp) return true;
+        const config = (mp.configExtra ?? {}) as Record<string, any>;
+        return config.estadoMp === 'activo' && !!config.mpAccessToken;
+      })
+      .map((mp: any) => {
+        const config = (mp.configExtra ?? {}) as Record<string, any>;
+        const configPublico: Record<string, any> = {};
+        for (const campo of CAMPOS_PUBLICOS) {
+          if (config[campo]) configPublico[campo] = config[campo];
+        }
+        return { ...mp, configExtra: configPublico };
+      });
+
+    return { ...tienda, metodosPago };
   }
 
   //Servicio para actualizar la tienda de un usuario autenticado, con validación de que tenga una tienda, generación de slug único si cambia el nombre, y manejo de errores.
@@ -151,11 +185,14 @@ export class TiendasService {
 
   async agregarMetodoPago(usuarioId: number, datos: AgregarMetodoPagoDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
-    const result = await this.repository.agregarMetodoPago(
-      tienda.id,
-      datos.metodoPagoId,
-      datos.detalle
-    );
+    const result = await this.repository.agregarMetodoPago(tienda.id, datos.metodoPagoId, datos.detalle, datos.configExtra);
+    this.invalidarCacheTienda(tienda.slug);
+    return result;
+  }
+
+  async actualizarMetodoPago(usuarioId: number, metodoPagoId: number, datos: ActualizarMetodoPagoDto) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const result = await this.repository.actualizarMetodoPago(tienda.id, metodoPagoId, datos);
     this.invalidarCacheTienda(tienda.slug);
     return result;
   }
@@ -170,12 +207,15 @@ export class TiendasService {
 
   async agregarMetodoEntrega(usuarioId: number, datos: AgregarMetodoEntregaDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
-    const result = await this.repository.agregarMetodoEntrega(
-      tienda.id,
-      datos.metodoEntregaId,
-      datos.zonaCobertura,
-      datos.detalle
-    );
+    const { metodoEntregaId, ...resto } = datos;
+    const result = await this.repository.agregarMetodoEntrega(tienda.id, metodoEntregaId, resto);
+    this.invalidarCacheTienda(tienda.slug);
+    return result;
+  }
+
+  async actualizarMetodoEntrega(usuarioId: number, metodoEntregaId: number, datos: ActualizarMetodoEntregaDto) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const result = await this.repository.actualizarMetodoEntrega(tienda.id, metodoEntregaId, datos);
     this.invalidarCacheTienda(tienda.slug);
     return result;
   }
@@ -188,6 +228,11 @@ export class TiendasService {
 
   // Carrusel
 
+  async listarCarruselAdmin(usuarioId: number) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    return this.repository.listarCarruselAdmin(tienda.id);
+  }
+
   async agregarImagenCarrusel(
     usuarioId: number,
     datos: AgregarImagenCarruselDto,
@@ -195,8 +240,13 @@ export class TiendasService {
   ) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     const imagenesCreadas = [];
+    const camposExtra = {
+      tipo: datos.tipo,
+      etiqueta: datos.etiqueta,
+      fechaDesde: datos.fechaDesde ?? null,
+      fechaHasta: datos.fechaHasta ?? null,
+    };
 
-    // Si hay archivos subidos, crear un registro por cada uno
     if (buffers && buffers.length > 0) {
       for (const file of buffers) {
         const url = await uploadImageToCloudinary(file.buffer);
@@ -206,23 +256,31 @@ export class TiendasService {
           subtitulo: datos.subtitulo,
           linkUrl: datos.linkUrl,
           orden: datos.orden,
+          ...camposExtra,
         });
         imagenesCreadas.push(resultado);
       }
     } else if (datos.url) {
-      // Si no hay archivos pero sí URL en el body, agregar una imagen
       const resultado = await this.repository.agregarImagenCarrusel(tienda.id, {
         url: datos.url,
         titulo: datos.titulo,
         subtitulo: datos.subtitulo,
         linkUrl: datos.linkUrl,
         orden: datos.orden,
+        ...camposExtra,
       });
       imagenesCreadas.push(resultado);
     }
 
     this.invalidarCacheTienda(tienda.slug);
     return imagenesCreadas;
+  }
+
+  async actualizarImagenCarrusel(usuarioId: number, imagenId: number, datos: ActualizarImagenCarruselDto) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    await this.repository.actualizarImagenCarrusel(imagenId, tienda.id, datos);
+    this.invalidarCacheTienda(tienda.slug);
+    return this.repository.listarCarruselAdmin(tienda.id);
   }
 
   async eliminarImagenCarrusel(usuarioId: number, imagenId: number) {
@@ -275,6 +333,14 @@ export class TiendasService {
     const resultado = await this.repository.actualizarAboutUs(tienda.id, { imagenUrl: url });
     this.invalidarCacheTienda(tienda.slug);
     return resultado;
+  }
+
+  async subirImagenBannerPromo(usuarioId: number, file: Express.Multer.File) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const url = await uploadImageToCloudinary(file.buffer);
+    await this.repository.actualizarTema(tienda.id, { bannerPromoImagenUrl: url } as any);
+    this.invalidarCacheTienda(tienda.slug);
+    return { bannerPromoImagenUrl: url };
   }
 
   //Marquee

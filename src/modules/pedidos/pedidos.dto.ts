@@ -15,6 +15,7 @@ export interface CrearPedidoDto {
   metodoPagoId: number;
   notasCliente?: string;
   costoEnvio?: number;
+  cuponCodigo?: string;
 }
 
 export interface ActualizarEstadoPedidoDto {

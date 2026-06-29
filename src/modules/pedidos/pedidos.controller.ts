@@ -98,4 +98,16 @@ export class PedidosController {
       next(error);
     }
   };
+
+  // Marca manualmente el estado de pago (para transferencia/efectivo)
+  actualizarEstadoPago = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as { id: string };
+      const { estadoPago } = req.body as { estadoPago: string };
+      const pedido = await this.service.actualizarEstadoPago(parseInt(id, 10), estadoPago);
+      responderOk(res, pedido, 'Estado de pago actualizado exitosamente');
+    } catch (error) {
+      next(error);
+    }
+  };
 }

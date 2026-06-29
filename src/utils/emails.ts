@@ -148,6 +148,47 @@ function p(texto: string, estilos: string = ''): string {
                     line-height:1.7;${estilos}">${texto}</p>`;
 }
 
+// ─── Bloque pago (datos de transferencia si corresponde) ──────────────────────
+function bloquePago(pedido: any): string {
+  const nombreMetodo = pedido.metodoPago?.nombre || 'A confirmar';
+
+  // Buscamos la config de ese método de pago en la tienda (alias/CBU)
+  const metodoTienda = (pedido.tienda?.metodosPago || []).find(
+    (m: any) => m.metodoPagoId === pedido.metodoPagoId
+  );
+  const cfg = (metodoTienda?.configExtra || {}) as Record<string, string>;
+  const tieneTransferencia = !!(cfg.alias || cfg.cbu);
+
+  if (!tieneTransferencia) {
+    return infoBox(`
+      <p style="margin:0 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;
+                 letter-spacing:0.08em;color:${T.mutedLight};">Pago</p>
+      <p style="margin:0;font-size:13px;color:${T.dark};"><strong>${nombreMetodo}</strong></p>`);
+  }
+
+  const filas: string[] = [];
+  if (cfg.titular) filas.push(`<tr><td style="padding:3px 0;font-size:13px;color:${T.muted};"><strong style="color:${T.dark};">Titular:</strong> ${cfg.titular}</td></tr>`);
+  if (cfg.banco)   filas.push(`<tr><td style="padding:3px 0;font-size:13px;color:${T.muted};"><strong style="color:${T.dark};">Banco:</strong> ${cfg.banco}</td></tr>`);
+  if (cfg.alias)   filas.push(`<tr><td style="padding:3px 0;font-size:13px;color:${T.muted};"><strong style="color:${T.dark};">Alias:</strong> ${cfg.alias}</td></tr>`);
+  if (cfg.cbu)     filas.push(`<tr><td style="padding:3px 0;font-size:13px;color:${T.muted};"><strong style="color:${T.dark};">CBU/CVU:</strong> ${cfg.cbu}</td></tr>`);
+
+  const wa = pedido.tienda?.whatsapp ? pedido.tienda.whatsapp.replace(/\D/g, '') : null;
+
+  return infoBox(`
+    <p style="margin:0 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;
+               letter-spacing:0.08em;color:${T.mutedLight};">Cómo pagar — Transferencia bancaria</p>
+    <p style="margin:0 0 8px;font-size:13px;color:${T.dark};">
+      Transferí <strong style="color:${T.accent};">$${Number(pedido.total).toLocaleString('es-AR')}</strong> a:
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;">${filas.join('')}</table>
+    <p style="margin:0;font-size:12px;color:${T.muted};line-height:1.6;">
+      Luego enviá el <strong style="color:${T.dark};">comprobante</strong>
+      ${wa ? `por <a href="https://wa.me/${wa}" style="color:${T.green};text-decoration:none;font-weight:700;">WhatsApp</a>` : 'a la tienda'},
+      indicando tu nombre <strong style="color:${T.dark};">${pedido.compradorNombre}</strong> y el pedido
+      <strong style="color:${T.dark};">#${pedido.id}</strong>.
+    </p>`, T.green);
+}
+
 // ─── Bloque contacto tienda ───────────────────────────────────────────────────
 function bloqueContacto(tienda: any): string {
   const whatsapp = tienda?.whatsapp;
@@ -397,6 +438,9 @@ export async function enviarEmailNuevoPedidoAlCliente(
         <strong>${pedido.metodoEntrega?.nombre || 'A confirmar'}</strong><br>
         <span style="color:${T.muted};">${pedido.direccionCalle} ${pedido.direccionNumero || ''}, ${pedido.direccionCiudad}</span>
       </p>`)}
+
+    <!-- Info pago / datos de transferencia -->
+    ${bloquePago(pedido)}
 
     ${bloqueContacto(pedido.tienda)}`;
 

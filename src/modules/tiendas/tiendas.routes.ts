@@ -9,12 +9,15 @@ import {
   ActualizarTiendaSchema,
   AgregarImagenCarruselSchema,
   AgregarMetodoEntregaSchema,
+  ActualizarMetodoEntregaSchema,
   AgregarMetodoPagoSchema,
+  ActualizarMetodoPagoSchema,
   CrearTiendaSchema,
   FiltrosTiendasSchema,
   ActualizarAboutUsSchema,
   ActualizarMarqueeSchema,
   CambiarSlugSchema,
+  ActualizarImagenCarruselSchema,
 } from './tiendas.dto';
 import { uploadMultiple, uploadSingle } from '../../config/multer.config';
 
@@ -53,36 +56,35 @@ router.put(
 );
 
 // Métodos de pago
-router.post(
-  '/mi-tienda/metodos-pago',
-  ...soloOwner,
-  validar(AgregarMetodoPagoSchema),
-  controller.agregarMetodoPago
-);
+router.post('/mi-tienda/metodos-pago', ...soloOwner, validar(AgregarMetodoPagoSchema), controller.agregarMetodoPago);
+router.put('/mi-tienda/metodos-pago/:metodoPagoId', ...soloOwner, validar(ActualizarMetodoPagoSchema), controller.actualizarMetodoPago);
 router.delete('/mi-tienda/metodos-pago/:metodoPagoId', ...soloOwner, controller.eliminarMetodoPago);
 
 // Métodos de entrega
-router.post(
-  '/mi-tienda/metodos-entrega',
-  ...soloOwner,
-  validar(AgregarMetodoEntregaSchema),
-  controller.agregarMetodoEntrega
-);
-router.delete(
-  '/mi-tienda/metodos-entrega/:metodoEntregaId',
-  ...soloOwner,
-  controller.eliminarMetodoEntrega
-);
+router.post('/mi-tienda/metodos-entrega', ...soloOwner, validar(AgregarMetodoEntregaSchema), controller.agregarMetodoEntrega);
+router.put('/mi-tienda/metodos-entrega/:metodoEntregaId', ...soloOwner, validar(ActualizarMetodoEntregaSchema), controller.actualizarMetodoEntrega);
+router.delete('/mi-tienda/metodos-entrega/:metodoEntregaId', ...soloOwner, controller.eliminarMetodoEntrega);
 
-// Carrusel de imágenes
+// Secciones Hero / Carrusel
+router.get('/mi-tienda/carrusel', ...soloOwner, controller.listarCarruselAdmin);
 router.post(
   '/mi-tienda/carrusel',
-  ...soloOwner,uploadMultiple,
+  ...soloOwner, uploadMultiple,
   validar(AgregarImagenCarruselSchema),
   controller.agregarImagenCarrusel
 );
+router.put(
+  '/mi-tienda/carrusel/reordenar',
+  ...soloOwner,
+  controller.reordenarCarrusel
+);
+router.put(
+  '/mi-tienda/carrusel/:imagenId',
+  ...soloOwner,
+  validar(ActualizarImagenCarruselSchema),
+  controller.actualizarImagenCarrusel
+);
 router.delete('/mi-tienda/carrusel/:imagenId', ...soloOwner, controller.eliminarImagenCarrusel);
-router.put('/mi-tienda/carrusel/reordenar', ...soloOwner, controller.reordenarCarrusel);
 
 // Logo
 router.post('/mi-tienda/logo', ...soloOwner, uploadSingle, controller.subirLogo);
@@ -101,6 +103,7 @@ router.put(
   controller.actualizarAboutUs
 );
 router.post('/mi-tienda/about-us/imagen', ...soloOwner, uploadSingle, controller.subirImagenAboutUs);
+router.post('/mi-tienda/banner-promo/imagen', ...soloOwner, uploadSingle, controller.subirImagenBannerPromo);
 
 // Marquee
 router.get('/mi-tienda/marquee', ...soloOwner, controller.obtenerMarquee);

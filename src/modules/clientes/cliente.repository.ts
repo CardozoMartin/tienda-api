@@ -165,14 +165,87 @@ export class ClienteRepository {
   }
 
   /**
-   * Listar clientes de una tienda
+   * Listar clientes de una tienda con estadísticas de consumo
    */
-  async listarPorTienda(tiendaId: number) {
-    return prisma.clienteTienda.findMany({
-      where: {
-        tiendaId,
-        activo: true,
-      },
+  async listarPorTienda(
+    tiendaId: number,
+    filtros: { busqueda?: string; pagina: number; limite: number }
+  ) {
+    const where: any = {
+      tiendaId,
+      ...(filtros.busqueda && {
+        OR: [
+          { nombre:   { contains: filtros.busqueda } },
+          { apellido: { contains: filtros.busqueda } },
+          { email:    { contains: filtros.busqueda } },
+          { telefono: { contains: filtros.busqueda } },
+        ],
+      }),
+    };
+
+    const skip = (filtros.pagina - 1) * filtros.limite;
+
+    const [clientes, total] = await prisma.$transaction([
+      prisma.clienteTienda.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          nombre: true,
+          apellido: true,
+          telefono: true,
+          emailVerificado: true,
+          activo: true,
+          creadoEn: true,
+          pedidos: {
+            where: { tiendaId },
+            select: {
+              id: true,
+              total: true,
+              estado: true,
+              creadoEn: true,
+            },
+            orderBy: { creadoEn: 'desc' },
+          },
+        },
+        orderBy: { creadoEn: 'desc' },
+        skip,
+        take: filtros.limite,
+      }),
+      prisma.clienteTienda.count({ where }),
+    ]);
+
+    // Calculamos estadísticas por cliente
+    const datos = clientes.map((c: any) => {
+      const pedidos = c.pedidos ?? [];
+      const totalGastado = pedidos.reduce((sum: number, p: any) => sum + Number(p.total ?? 0), 0);
+      const ultimoPedido = pedidos[0] ?? null;
+      return {
+        id: c.id,
+        email: c.email,
+        nombre: c.nombre,
+        apellido: c.apellido,
+        telefono: c.telefono,
+        emailVerificado: c.emailVerificado,
+        activo: c.activo,
+        creadoEn: c.creadoEn,
+        stats: {
+          totalPedidos: pedidos.length,
+          totalGastado,
+          ultimoPedido: ultimoPedido ? { id: ultimoPedido.id, estado: ultimoPedido.estado, fecha: ultimoPedido.creadoEn } : null,
+        },
+      };
+    });
+
+    return { datos, total };
+  }
+
+  /**
+   * Detalle de un cliente con historial completo de pedidos
+   */
+  async obtenerDetalleOwner(clienteId: number, tiendaId: number) {
+    return prisma.clienteTienda.findFirst({
+      where: { id: clienteId, tiendaId },
       select: {
         id: true,
         email: true,
@@ -180,9 +253,39 @@ export class ClienteRepository {
         apellido: true,
         telefono: true,
         emailVerificado: true,
+        activo: true,
         creadoEn: true,
+        actualizadoEn: true,
+        pedidos: {
+          where: { tiendaId },
+          select: {
+            id: true,
+            total: true,
+            estado: true,
+            estadoPago: true,
+            compradorNombre: true,
+            compradorEmail: true,
+            compradorTel: true,
+            direccionCalle: true,
+            direccionCiudad: true,
+            direccionProv: true,
+            metodoPago: { select: { nombre: true } },
+            metodoEntrega: { select: { nombre: true } },
+            items: {
+              select: {
+                nombreProd: true,
+                nombreVar: true,
+                cantidad: true,
+                precioUnit: true,
+                subtotal: true,
+                imagenUrl: true,
+              },
+            },
+            creadoEn: true,
+          },
+          orderBy: { creadoEn: 'desc' },
+        },
       },
-      orderBy: { creadoEn: 'desc' },
     });
   }
 

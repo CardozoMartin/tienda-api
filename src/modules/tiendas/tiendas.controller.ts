@@ -6,6 +6,7 @@ import {
   ActualizarTemaDto,
   ActualizarTiendaDto,
   AgregarImagenCarruselDto,
+  ActualizarImagenCarruselDto,
   AgregarMetodoEntregaDto,
   AgregarMetodoPagoDto,
   CrearTiendaDto,
@@ -127,57 +128,67 @@ export class TiendasController {
     }
   };
 
-  /**
-   * DELETE /tiendas/mi-tienda/metodos-pago/:metodoPagoId
-   */
+  actualizarMetodoPago = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const metodoPagoId = parseInt(req.params['metodoPagoId'] as string, 10);
+      const resultado = await this.service.actualizarMetodoPago(usuarioId, metodoPagoId, req.body);
+      responderOk(res, resultado);
+    } catch (error) { next(error); }
+  };
+
   eliminarMetodoPago = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const metodoPagoId = parseInt(req.params['metodoPagoId'] as string, 10);
       await this.service.eliminarMetodoPago(usuarioId, metodoPagoId);
       responderOk(res, null, 'Método de pago eliminado');
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   };
 
   // ── Métodos de entrega ──
 
-  /**
-   * POST /tiendas/mi-tienda/metodos-entrega
-   */
   agregarMetodoEntrega = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
-      const resultado = await this.service.agregarMetodoEntrega(
-        usuarioId,
-        req.body as AgregarMetodoEntregaDto
-      );
+      const resultado = await this.service.agregarMetodoEntrega(usuarioId, req.body as AgregarMetodoEntregaDto);
       responderOk(res, resultado, 'Método de entrega agregado', 201);
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   };
 
-  /**
-   * DELETE /tiendas/mi-tienda/metodos-entrega/:metodoEntregaId
-   */
-  eliminarMetodoEntrega = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
+  actualizarMetodoEntrega = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const metodoEntregaId = parseInt(req.params['metodoEntregaId'] as string, 10);
+      const resultado = await this.service.actualizarMetodoEntrega(usuarioId, metodoEntregaId, req.body);
+      responderOk(res, resultado);
+    } catch (error) { next(error); }
+  };
+
+  eliminarMetodoEntrega = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const metodoEntregaId = parseInt(req.params['metodoEntregaId'] as string, 10);
       await this.service.eliminarMetodoEntrega(usuarioId, metodoEntregaId);
       responderOk(res, null, 'Método de entrega eliminado');
+    } catch (error) { next(error); }
+  };
+
+  // ── Carrusel ──
+
+  /**
+   * GET /tiendas/mi-tienda/carrusel
+   * Lista todas las secciones (incluyendo inactivas y programadas) para el panel admin
+   */
+  listarCarruselAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const secciones = await this.service.listarCarruselAdmin(usuarioId);
+      responderOk(res, secciones, 'Secciones hero obtenidas');
     } catch (error) {
       next(error);
     }
   };
-
-  // ── Carrusel ──
 
   /**
    * POST /tiendas/mi-tienda/carrusel
@@ -215,6 +226,22 @@ export class TiendasController {
       const imagenId = parseInt(req.params['imagenId'] as string, 10);
       await this.service.eliminarImagenCarrusel(usuarioId, imagenId);
       responderOk(res, null, 'Imagen eliminada del carrusel');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PUT /tiendas/mi-tienda/carrusel/:imagenId
+   * Edita metadatos de una sección (título, tipo, fechas, activa, etiqueta)
+   */
+  actualizarImagenCarrusel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const imagenId = parseInt(req.params['imagenId'] as string, 10);
+      const datos = req.body as ActualizarImagenCarruselDto;
+      const secciones = await this.service.actualizarImagenCarrusel(usuarioId, imagenId, datos);
+      responderOk(res, secciones, 'Sección actualizada');
     } catch (error) {
       next(error);
     }
@@ -275,6 +302,18 @@ export class TiendasController {
 
       const resultado = await this.service.subirImagenAboutUs(usuarioId, file);
       responderOk(res, resultado, 'Imagen de "Sobre Nosotros" actualizada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  subirImagenBannerPromo = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const file = req.file as Express.Multer.File;
+      if (!file) throw new ErrorApi('No se subió ninguna imagen', 400);
+      const resultado = await this.service.subirImagenBannerPromo(usuarioId, file);
+      responderOk(res, resultado, 'Imagen del banner promocional actualizada');
     } catch (error) {
       next(error);
     }

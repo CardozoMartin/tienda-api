@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { responderOk, responderPaginado } from '../../utils/helpers';
 import { ClienteService } from './cliente.service';
 import { PedidosRepository } from '../pedidos/pedidos.repository';
+import { RequestAutenticado } from '../../types';
+import { prisma } from '../../config/prisma';
 
 export class ClienteController {
   private service: ClienteService;
@@ -121,5 +123,36 @@ export class ClienteController {
     } catch (error) {
       next(error);
     }
+  };
+
+  // ── Owner: listar clientes de su tienda ──
+
+  listarClientesTienda = async (req: Request, res: Response, next: any): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const tienda = await prisma.tienda.findUnique({ where: { usuarioId }, select: { id: true } });
+      if (!tienda) { res.status(404).json({ ok: false, mensaje: 'Tienda no encontrada' }); return; }
+
+      const pagina = Math.max(1, Number(req.query['pagina']) || 1);
+      const limite = Math.min(50, Math.max(1, Number(req.query['limite']) || 20));
+      const busqueda = (req.query['busqueda'] as string) || undefined;
+
+      const { datos, total } = await this.service.listarClientesTienda(tienda.id, { busqueda, pagina, limite });
+      const totalPaginas = Math.ceil(total / limite);
+
+      responderPaginado(res, { datos, total, pagina, limite, totalPaginas }, 'Clientes obtenidos');
+    } catch (error) { next(error); }
+  };
+
+  obtenerDetalleCliente = async (req: Request, res: Response, next: any): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const tienda = await prisma.tienda.findUnique({ where: { usuarioId }, select: { id: true } });
+      if (!tienda) { res.status(404).json({ ok: false, mensaje: 'Tienda no encontrada' }); return; }
+
+      const clienteId = Number(req.params['clienteId']);
+      const resultado = await this.service.obtenerDetalleCliente(clienteId, tienda.id);
+      responderOk(res, resultado, 'Cliente obtenido');
+    } catch (error) { next(error); }
   };
 }

@@ -94,66 +94,35 @@ async function main(): Promise<void> {
   // PLANTILLAS
   // ─────────────────────────────────────────────
 
-  const plantillas = [
-    {
-      nombre: "Clásica",
-      descripcion: "Diseño limpio y profesional. Ideal para cualquier tipo de negocio.",
+  console.log("🎨 Limpiando plantillas viejas...");
+  // Desvincular tiendas antes de borrar para evitar FK error
+  await prisma.tienda.updateMany({
+    where: { plantillaId: { not: null } },
+    data: { plantillaId: null },
+  });
+  await prisma.plantillaTienda.deleteMany({});
+
+  const plantillaGorras = await prisma.plantillaTienda.create({
+    data: {
+      nombre: "plantilla_gorras",
+      descripcion: "Diseño streetwear para gorras y accesorios urbanos.",
       sortOrder: 1,
       activo: true,
       defaultConfig: {
-        navbarStyle: "SOLID",
-        heroLayout: "CENTERED",
+        navbarStyle: "TRANSPARENT",
+        heroLayout: "SPLIT",
         cardStyle: "ROUNDED",
         borderRadius: "MD",
       },
     },
-    {
-      nombre: "Moderna",
-      descripcion: "Diseño contemporáneo con hero de pantalla completa.",
-      sortOrder: 2,
-      activo: true,
-      defaultConfig: {
-        navbarStyle: "TRANSPARENT",
-        heroLayout: "FULLSCREEN",
-        cardStyle: "MINIMAL",
-        borderRadius: "LG",
-      },
-    },
-    {
-      nombre: "Boutique",
-      descripcion: "Elegante y sofisticada. Perfecta para moda y accesorios.",
-      sortOrder: 3,
-      activo: true,
-      defaultConfig: {
-        navbarStyle: "STICKY",
-        heroLayout: "SPLIT",
-        cardStyle: "ELEGANT",
-        borderRadius: "NONE",
-      },
-    },
-    {
-      nombre: "Colorida",
-      descripcion: "Vibrante y alegre. Ideal para juguetes, regalos y artesanías.",
-      sortOrder: 4,
-      activo: true,
-      defaultConfig: {
-        navbarStyle: "SOLID",
-        heroLayout: "LEFT",
-        cardStyle: "PLAYFUL",
-        borderRadius: "FULL",
-      },
-    },
-  ];
+  });
 
-  console.log("🎨 Creando plantillas...");
-  for (const plantilla of plantillas) {
-    await prisma.plantillaTienda.upsert({
-      where: { id: plantillas.indexOf(plantilla) + 1 },
-      update: {},
-      create: plantilla,
-    });
-  }
-  console.log(`   ${plantillas.length} plantillas creadas/verificadas ✓`);
+  // Re-vincular todas las tiendas a la única plantilla disponible
+  await prisma.tienda.updateMany({
+    data: { plantillaId: plantillaGorras.id },
+  });
+
+  console.log(`   Plantilla Gorras creada con id=${plantillaGorras.id} ✓`);
 
   // ─────────────────────────────────────────────
   // USUARIO ADMIN INICIAL
