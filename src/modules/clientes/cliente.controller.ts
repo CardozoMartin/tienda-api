@@ -22,6 +22,15 @@ export class ClienteController {
     }
   };
 
+  reenviarVerificacion = async (req: Request, res: Response, next: any): Promise<void> => {
+    try {
+      const resultado = await this.service.reenviarVerificacion(req.body);
+      responderOk(res, resultado, resultado.mensaje, 200);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   //controlador para iniciar sesión de cliente
   login = async (req: Request, res: Response, next: any): Promise<void> => {
     try {

@@ -81,6 +81,18 @@ export interface LoginResponse {
 }
 
 // ─────────────────────────────────────────────
+// REENVIAR EMAIL DE VERIFICACIÓN
+// ─────────────────────────────────────────────
+export const ReenviarVerificacionClienteSchema = z
+  .object({
+    tiendaId: z.number().int().positive(),
+    email: z.string().min(1, 'Email es requerido').email('Email inválido').toLowerCase().trim(),
+  })
+  .strict();
+
+export type ReenviarVerificacionClienteInput = z.infer<typeof ReenviarVerificacionClienteSchema>;
+
+// ─────────────────────────────────────────────
 // SOLICITAR RESET PASSWORD
 // ─────────────────────────────────────────────
 export const SolicitarResetPasswordClienteSchema = z

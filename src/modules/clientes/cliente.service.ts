@@ -4,12 +4,13 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../../config/prisma';
 import { ErrorApi } from '../../types';
 import { enviarEmailVerificacionAlCliente, enviarEmailResetPassword } from '../../utils/emails';
-import {
+import type {
   ActualizarClienteInput,
   CambiarPasswordClienteInput,
   LoginClienteInput,
   LoginResponse,
   RegistroClienteInput,
+  ReenviarVerificacionClienteInput,
   SolicitarResetPasswordClienteInput,
   ConfirmarResetPasswordClienteInput,
 } from './cliente.dto';
@@ -67,6 +68,31 @@ export class ClienteService {
       apellido: cliente.apellido,
       mensaje: 'Registro exitoso. Por favor verifica tu email.',
     };
+  }
+
+  async reenviarVerificacion(input: ReenviarVerificacionClienteInput) {
+    const mensajeOk = 'Si el email existe y no está verificado, recibirás el enlace en breve.';
+
+    const cliente = await this.repo.buscarPorEmailEnTienda(input.email, input.tiendaId);
+
+    if (!cliente || !cliente.activo || cliente.emailVerificado) {
+      return { mensaje: mensajeOk };
+    }
+
+    const tokenVerif = crypto.randomBytes(32).toString('hex');
+    const tokenVerifVenc = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await prisma.clienteTienda.update({
+      where: { id: cliente.id },
+      data: { tokenVerif, tokenVerifVenc },
+    });
+
+    const tienda = await this.tiendarepo.buscarPorId(input.tiendaId);
+    enviarEmailVerificacionAlCliente(input.email, cliente.nombre, tokenVerif, tienda.nombre, tienda.slug).catch(
+      (err: Error) => console.error('Error reenviando email verificación:', err)
+    );
+
+    return { mensaje: mensajeOk };
   }
 
   //servicio para iniciar sesión de un cliente

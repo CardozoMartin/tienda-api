@@ -8,6 +8,7 @@ import {
   CambiarPasswordClienteSchema,
   LoginClienteSchema,
   RegistroClienteSchema,
+  ReenviarVerificacionClienteSchema,
   SolicitarResetPasswordClienteSchema,
   ConfirmarResetPasswordClienteSchema,
 } from './cliente.dto';
@@ -19,6 +20,7 @@ const controllerCliente = new ClienteController();
 //Rutas Publicas
 router.post('/registro', validar(RegistroClienteSchema), controllerCliente.registro);
 router.post('/login', validar(LoginClienteSchema), controllerCliente.login);
+router.post('/reenviar-verificacion', validar(ReenviarVerificacionClienteSchema), controllerCliente.reenviarVerificacion);
 router.get('/verificar-email/:token', controllerCliente.verificarEmail);
 router.post(
   '/olvide-password',
