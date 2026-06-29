@@ -36,6 +36,7 @@ const envSchema = z.object({
 
   // Frontend & Cloudinary
   FRONTEND_URL: z.string().url().default("http://localhost:5173"),
+  STOREFRONT_URL: z.string().url().default("http://localhost:5174"),
   CLOUD_NAME: z.string().optional().default(""),
   CLOUD_API_KEY: z.string().optional().default(""),
   CLOUD_API_SECRET: z.string().optional().default(""),

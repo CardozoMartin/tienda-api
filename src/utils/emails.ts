@@ -356,8 +356,9 @@ export async function enviarEmailResetPassword(
 export async function enviarEmailVerificacionAlCliente(
   email: string, nombre: string, tokenVerificacion: string, nombreTienda: string, slugTienda?: string
 ): Promise<boolean> {
-  const base = `${env.FRONTEND_URL}/verify-email?token=${tokenVerificacion}`;
-  const url = slugTienda ? `${base}&slug=${slugTienda}` : base;
+  const url = slugTienda
+    ? `${env.STOREFRONT_URL}/${slugTienda}/cuenta?token=${tokenVerificacion}`
+    : `${env.STOREFRONT_URL}/cuenta?token=${tokenVerificacion}`;
   const contenido = `
     ${badge('Bienvenida')}
     <div style="margin-top:24px;">
