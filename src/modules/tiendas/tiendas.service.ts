@@ -104,10 +104,13 @@ export class TiendasService {
   //Igual que obtenerPorSlug, pero con una regla extra: el dominio debe estar VERIFICADO.
   //Así evitamos que alguien cargue un dominio ajeno y se sirva la tienda sin probar que es suyo.
   async obtenerPorDominio(dominio: string) {
+    //1.- Normalizamos el dominio: quitamos espacios y lo pasamos a minúsculas.
     const dominioNormalizado = dominio.trim().toLowerCase();
+    //2.- Buscamos en caché primero, para no saturar la base de datos con consultas a dominios inexistentes.
     const cacheKey = `tienda_dominio_${dominioNormalizado}`;
     let tienda: any = cacheService.get(cacheKey);
 
+    //3.- Si no está en caché, buscamos en la base de datos. Solo devolvemos la tienda si está activa, pública y con dominio verificado.
     if (!tienda) {
       tienda = await this.repository.buscarPorDominio(dominioNormalizado);
       if (!tienda || !tienda.dominioVerificado || !tienda.activa || !tienda.publica) {
@@ -128,6 +131,7 @@ export class TiendasService {
   //Guarda el dominio como NO verificado y genera un token para la verificación por DNS (registro TXT).
   //Devuelve la instrucción que el usuario debe configurar en su proveedor de dominio.
   async guardarDominio(usuarioId: number, dominio: string) {
+    //1.- Buscamos la tienda del usuario. Si no tiene, devolvemos error 404.
     const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
     if (!tienda) {
       throw new ErrorApi("No tenés ninguna tienda creada", 404);
@@ -153,7 +157,7 @@ export class TiendasService {
       cacheService.del(`tienda_dominio_${tienda.dominioPersonalizado}`);
     }
 
-    // Instrucción para el panel: qué registro TXT debe crear el usuario.
+    // Instrucción para el panel: el TXT para verificar propiedad y el CNAME para apuntar.
     return {
       dominio,
       verificado: false,
@@ -163,6 +167,7 @@ export class TiendasService {
         valor: token,
         ayuda: `Agregá un registro TXT en tu proveedor de dominio con este valor, y luego presioná "Verificar".`,
       },
+      instruccionApuntado: this.instruccionApuntado(),
     };
   }
 
@@ -214,6 +219,19 @@ export class TiendasService {
     return { verificado: true, dominio: tienda.dominioPersonalizado, mensaje: "Dominio verificado correctamente" };
   }
 
+  // Instrucción del registro CNAME que apunta el dominio del usuario a nuestra
+  // plataforma (Netlify). Esto es lo que hace que el dominio CARGUE la tienda
+  // (distinto de la verificación TXT, que solo prueba la propiedad).
+  private instruccionApuntado() {
+    const destino = process.env.STOREFRONT_HOST ?? "apptiendizi.netlify.app";
+    return {
+      tipo: "CNAME",
+      host: "www",
+      valor: destino,
+      ayuda: `Apuntá tu dominio a nuestra plataforma con este registro CNAME para que cargue tu tienda.`,
+    };
+  }
+
   //Servicio para obtener el estado actual del dominio del dueño (para mostrar en el panel).
   async obtenerEstadoDominio(usuarioId: number) {
     const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
@@ -226,6 +244,7 @@ export class TiendasService {
       instruccionDns: tienda.dominioTokenVerif
         ? { tipo: "TXT", host: "@", valor: tienda.dominioTokenVerif }
         : null,
+      instruccionApuntado: tienda.dominioPersonalizado ? this.instruccionApuntado() : null,
     };
   }
 
