@@ -48,6 +48,12 @@ model Tienda {
   usuarioId      Int                   @unique
   plantillaId    Int?
   slug           String                @unique @db.VarChar(120)
+  // Dominio propio del comprador (ej: "www.mitienda.com"). Opcional y único.
+  // Solo se sirve la tienda por este dominio cuando dominioVerificado = true.
+  dominioPersonalizado String?          @unique @db.VarChar(255)
+  dominioVerificado    Boolean          @default(false)
+  // Código único que el dueño debe publicar como registro TXT en su DNS para probar la propiedad.
+  dominioTokenVerif    String?          @db.VarChar(100)
   nombre         String                @db.VarChar(150)
   titulo         String?               @db.VarChar(200)
   descripcion    String?               @db.Text

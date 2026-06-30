@@ -1,5 +1,7 @@
 // Service de tiendas.
 // Lógica de negocio: validaciones, generación de slugs únicos, control de permisos.
+import { randomBytes } from "crypto";
+import { resolveTxt } from "dns/promises";
 import { TiendasRepository } from "./tiendas.repository";
 import { ErrorApi } from "../../types";
 import { generarSlug, generarSlugUnico, construirPaginacion } from "../../utils/helpers";
@@ -96,6 +98,135 @@ export class TiendasService {
     );
 
     return this.sanitizarTiendaPublica(tienda);
+  }
+
+  //Servicio para obtener una tienda por su dominio propio (ej: www.mitienda.com).
+  //Igual que obtenerPorSlug, pero con una regla extra: el dominio debe estar VERIFICADO.
+  //Así evitamos que alguien cargue un dominio ajeno y se sirva la tienda sin probar que es suyo.
+  async obtenerPorDominio(dominio: string) {
+    const dominioNormalizado = dominio.trim().toLowerCase();
+    const cacheKey = `tienda_dominio_${dominioNormalizado}`;
+    let tienda: any = cacheService.get(cacheKey);
+
+    if (!tienda) {
+      tienda = await this.repository.buscarPorDominio(dominioNormalizado);
+      if (!tienda || !tienda.dominioVerificado || !tienda.activa || !tienda.publica) {
+        throw new ErrorApi("Tienda no encontrada", 404);
+      }
+      cacheService.set(cacheKey, tienda);
+    }
+
+    // Incrementamos las vistas de forma asíncrona, sin bloquear la respuesta
+    this.repository.incrementarVistas(tienda.id).catch((err) =>
+      logger.error("[TIENDAS] Error al incrementar vistas:", err)
+    );
+
+    return this.sanitizarTiendaPublica(tienda);
+  }
+
+  //Servicio para que el dueño cargue/cambie el dominio propio de su tienda.
+  //Guarda el dominio como NO verificado y genera un token para la verificación por DNS (registro TXT).
+  //Devuelve la instrucción que el usuario debe configurar en su proveedor de dominio.
+  async guardarDominio(usuarioId: number, dominio: string) {
+    const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
+    if (!tienda) {
+      throw new ErrorApi("No tenés ninguna tienda creada", 404);
+    }
+
+    // Validamos que el dominio no esté tomado por otra tienda.
+    const ocupado = await this.repository.existeDominio(dominio, tienda.id);
+    if (ocupado) {
+      throw new ErrorApi(`El dominio "${dominio}" ya está en uso por otra tienda`, 409);
+    }
+
+    // Generamos un token único que el usuario deberá publicar como registro TXT en su DNS.
+    const token = `tiendizi-verify=${randomBytes(16).toString("hex")}`;
+
+    await this.repository.actualizar(tienda.id, {
+      dominioPersonalizado: dominio,
+      dominioVerificado: false, // al cambiar el dominio, se debe verificar de nuevo
+      dominioTokenVerif: token,
+    });
+
+    // Si el dominio cambió, invalidamos cualquier caché del dominio anterior.
+    if (tienda.dominioPersonalizado) {
+      cacheService.del(`tienda_dominio_${tienda.dominioPersonalizado}`);
+    }
+
+    // Instrucción para el panel: qué registro TXT debe crear el usuario.
+    return {
+      dominio,
+      verificado: false,
+      instruccionDns: {
+        tipo: "TXT",
+        host: "@",
+        valor: token,
+        ayuda: `Agregá un registro TXT en tu proveedor de dominio con este valor, y luego presioná "Verificar".`,
+      },
+    };
+  }
+
+  //Servicio para VERIFICAR la propiedad del dominio consultando el DNS real.
+  //Lee los registros TXT del dominio y comprueba que el token que generamos esté publicado.
+  //Si coincide, marca el dominio como verificado y ya puede servirse la tienda por él.
+  async verificarDominio(usuarioId: number) {
+    const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
+    if (!tienda) {
+      throw new ErrorApi("No tenés ninguna tienda creada", 404);
+    }
+    if (!tienda.dominioPersonalizado || !tienda.dominioTokenVerif) {
+      throw new ErrorApi("Primero cargá un dominio para verificar", 400);
+    }
+    if (tienda.dominioVerificado) {
+      return { verificado: true, mensaje: "El dominio ya estaba verificado" };
+    }
+
+    // Consultamos los registros TXT del dominio en el DNS público.
+    let registrosTxt: string[][];
+    try {
+      registrosTxt = await resolveTxt(tienda.dominioPersonalizado);
+    } catch (err) {
+      // ENOTFOUND/ENODATA = el dominio no tiene registros TXT (o no existe / aún no propaga).
+      logger.warn(`[DOMINIO] No se pudieron leer TXT de ${tienda.dominioPersonalizado}:`, err);
+      throw new ErrorApi(
+        "No encontramos el registro TXT todavía. Revisá que esté bien cargado; el DNS puede tardar unos minutos en propagar.",
+        422
+      );
+    }
+
+    // Cada registro TXT puede venir partido en varios fragmentos; los unimos antes de comparar.
+    const valores = registrosTxt.map((partes) => partes.join(""));
+    const coincide = valores.includes(tienda.dominioTokenVerif);
+
+    if (!coincide) {
+      throw new ErrorApi(
+        "El registro TXT no coincide. Verificá que copiaste el valor exacto y esperá unos minutos a que propague.",
+        422
+      );
+    }
+
+    // ¡Verificado! Marcamos la tienda y limpiamos el token (ya no se necesita).
+    await this.repository.actualizar(tienda.id, {
+      dominioVerificado: true,
+      dominioTokenVerif: null,
+    });
+
+    return { verificado: true, dominio: tienda.dominioPersonalizado, mensaje: "Dominio verificado correctamente" };
+  }
+
+  //Servicio para obtener el estado actual del dominio del dueño (para mostrar en el panel).
+  async obtenerEstadoDominio(usuarioId: number) {
+    const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
+    if (!tienda) {
+      throw new ErrorApi("No tenés ninguna tienda creada", 404);
+    }
+    return {
+      dominio: tienda.dominioPersonalizado ?? null,
+      verificado: tienda.dominioVerificado,
+      instruccionDns: tienda.dominioTokenVerif
+        ? { tipo: "TXT", host: "@", valor: tienda.dominioTokenVerif }
+        : null,
+    };
   }
 
   /**

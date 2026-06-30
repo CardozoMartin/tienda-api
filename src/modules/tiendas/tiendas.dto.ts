@@ -220,3 +220,19 @@ export const CambiarSlugSchema = z.object({
 });
 
 export type CambiarSlugDto = z.infer<typeof CambiarSlugSchema>;
+
+export const GuardarDominioSchema = z.object({
+  dominio: z
+    .string({ required_error: 'El dominio es requerido' })
+    .trim()
+    .toLowerCase()
+    .min(4, 'El dominio es demasiado corto')
+    .max(255, 'El dominio es demasiado largo')
+    // Valida un dominio tipo "mitienda.com" o "www.mitienda.com" (sin http:// ni rutas).
+    .regex(
+      /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63})+$/,
+      'Ingresá un dominio válido, ej: www.mitienda.com (sin http:// ni barras)'
+    ),
+});
+
+export type GuardarDominioDto = z.infer<typeof GuardarDominioSchema>;

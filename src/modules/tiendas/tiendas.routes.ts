@@ -18,6 +18,7 @@ import {
   ActualizarMarqueeSchema,
   CambiarSlugSchema,
   ActualizarImagenCarruselSchema,
+  GuardarDominioSchema,
 } from './tiendas.dto';
 import { uploadMultiple, uploadSingle } from '../../config/multer.config';
 
@@ -35,6 +36,10 @@ router.get('/', validar(FiltrosTiendasSchema, 'query'), controller.listar);
 // Catálogo de métodos (Público/Owner)
 router.get('/metodos-pago', controller.listarMetodosPago);
 router.get('/metodos-entrega', controller.listarMetodosEntrega);
+
+// Resolver tienda por dominio propio (ej: ?host=www.mitienda.com).
+// IMPORTANTE: debe ir ANTES de /:slug para no ser capturada como si "por-dominio" fuera un slug.
+router.get('/por-dominio', controller.obtenerPorDominio);
 
 
 // RUTAS PROTEGIDAS - OWNER
@@ -89,6 +94,11 @@ router.delete('/mi-tienda/carrusel/:imagenId', ...soloOwner, controller.eliminar
 // Logo
 router.post('/mi-tienda/logo', ...soloOwner, uploadSingle, controller.subirLogo);
 router.delete('/mi-tienda/logo', ...soloOwner, controller.eliminarLogo);
+
+// Dominio propio
+router.get('/mi-tienda/dominio', ...soloOwner, controller.obtenerEstadoDominio);
+router.patch('/mi-tienda/dominio', ...soloOwner, validar(GuardarDominioSchema), controller.guardarDominio);
+router.post('/mi-tienda/dominio/verificar', ...soloOwner, controller.verificarDominio);
 
 // Slug
 router.patch('/mi-tienda/slug', ...soloOwner, validar(CambiarSlugSchema), controller.cambiarSlug);

@@ -46,6 +46,54 @@ export class TiendasController {
     }
   };
 
+  //controlador para obtener una tienda por su dominio propio (storefront servido en dominio del cliente)
+  obtenerPorDominio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const host = (req.query['host'] as string) ?? '';
+      if (!host) {
+        throw new ErrorApi('Falta el parámetro host', 400);
+      }
+      const tienda = await this.service.obtenerPorDominio(host);
+      responderOk(res, tienda, 'Tienda obtenida exitosamente');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para que el dueño cargue/cambie el dominio propio de su tienda
+  guardarDominio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const { dominio } = req.body as { dominio: string };
+      const resultado = await this.service.guardarDominio(usuarioId, dominio);
+      responderOk(res, resultado, 'Dominio guardado. Configurá el registro TXT para verificarlo.');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para verificar la propiedad del dominio (consulta el DNS real)
+  verificarDominio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.verificarDominio(usuarioId);
+      responderOk(res, resultado, 'Verificación de dominio completada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para obtener el estado del dominio del dueño (para el panel)
+  obtenerEstadoDominio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.obtenerEstadoDominio(usuarioId);
+      responderOk(res, resultado, 'Estado del dominio obtenido');
+    } catch (error) {
+      next(error);
+    }
+  };
+
   //controlador para obtener la tienda del usuario autenticado
   obtenerMiTienda = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
