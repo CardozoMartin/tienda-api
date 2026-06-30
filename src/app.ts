@@ -5,9 +5,39 @@ import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import * as Sentry from '@sentry/node';
 import { env } from './config/env';
+import { prisma } from './config/prisma';
 import { manejadorErrores, noEncontrado } from './middleware/errores.middleware';
 import router from './router';
 import { logStream } from './utils/logger';
+
+// Comprueba si un Origin (ej: "https://www.mitienda.com") corresponde a una
+// tienda con dominio propio verificado. Cachea el resultado unos minutos para
+// no consultar la base en cada request.
+const cacheDominiosCors = new Map<string, { permitido: boolean; expira: number }>();
+const TTL_CORS_MS = 5 * 60 * 1000;
+
+async function esDominioDeTiendaVerificado(origin: string): Promise<boolean> {
+  let host: string;
+  try {
+    host = new URL(origin).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+
+  const cacheado = cacheDominiosCors.get(host);
+  if (cacheado && cacheado.expira > Date.now()) {
+    return cacheado.permitido;
+  }
+
+  const tienda = await prisma.tienda.findFirst({
+    where: { dominioPersonalizado: host, dominioVerificado: true },
+    select: { id: true },
+  });
+  const permitido = tienda !== null;
+
+  cacheDominiosCors.set(host, { permitido, expira: Date.now() + TTL_CORS_MS });
+  return permitido;
+}
 
 export function crearApp(): Application {
   const app = express();
@@ -35,11 +65,18 @@ export function crearApp(): Application {
     crossOriginResourcePolicy: { policy: "cross-origin" },
   }));
 
-  // CORS: solo permitimos el origen configurado en .env
+  // CORS: permitimos los orígenes fijos (plataforma) y, dinámicamente, los
+  // dominios propios de tiendas que estén verificados en la base de datos.
   app.use(
     cors({
-      origin: (origin, callback) => {
+      origin: async (origin, callback) => {
         if (!origin || corsOrigins.has(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        // Si el origen corresponde a un dominio propio verificado, lo permitimos.
+        if (await esDominioDeTiendaVerificado(origin)) {
           callback(null, true);
           return;
         }

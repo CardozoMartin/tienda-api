@@ -46,6 +46,25 @@ export class TiendasRepository {
     });
   }
 
+  //Query para obtener la tienda por su dominio propio (ej: www.mitienda.com).
+  //Misma forma que buscarPorSlug, solo cambia la llave de búsqueda.
+  async buscarPorDominio(dominio: string): Promise<any> {
+    return prisma.tienda.findUnique({
+      where: { dominioPersonalizado: dominio },
+      include: {
+        usuario: { select: { id: true, nombre: true, apellido: true, avatarUrl: true } },
+        plantilla: true,
+        temaConfig: true,
+        metodosPago: { include: { metodoPago: true } },
+        metodosEntrega: { include: { metodoEntrega: true } },
+        carrusel: { where: carruselPublicoWhere(), orderBy: { orden: 'asc' } },
+        aboutUs: true,
+        marqueeItems: { orderBy: { orden: 'asc' } },
+        _count: { select: { productos: true, resenas: true } },
+      },
+    });
+  }
+
  //Query para obtener la tienda de un usuario autenticado
   async buscarPorUsuarioId(usuarioId: number): Promise<any> {
     return prisma.tienda.findUnique({
@@ -75,6 +94,18 @@ export class TiendasRepository {
       where: {
         slug,
         // Si excluirId está presente, excluimos esa tienda de la búsqueda (para updates)
+        ...(excluirId && { id: { not: excluirId } }),
+      },
+      select: { id: true },
+    });
+    return tienda !== null;
+  }
+
+  // Verifica si un dominio ya está tomado por otra tienda (excluyendo la propia en updates).
+  async existeDominio(dominio: string, excluirId?: number): Promise<boolean> {
+    const tienda = await prisma.tienda.findFirst({
+      where: {
+        dominioPersonalizado: dominio,
         ...(excluirId && { id: { not: excluirId } }),
       },
       select: { id: true },
