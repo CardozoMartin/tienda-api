@@ -130,6 +130,17 @@ export class TiendasController {
     }
   };
 
+  //controlador para eliminar la configuración de email del dueño
+  eliminarConfigEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.eliminarConfigEmail(usuarioId);
+      responderOk(res, resultado, 'Configuración de email eliminada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
   //controlador para obtener la tienda del usuario autenticado
   obtenerMiTienda = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

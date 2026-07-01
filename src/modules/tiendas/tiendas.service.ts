@@ -60,7 +60,6 @@ export class TiendasService {
       nombre: datos.nombre,
       titulo: datos.titulo,
       descripcion: datos.descripcion,
-      plantillaId: datos.plantillaId,
       whatsapp: datos.whatsapp,
       instagram: datos.instagram,
       facebook: datos.facebook,
@@ -329,6 +328,27 @@ export class TiendasService {
       // El dueño no puede mandar campañas hasta tener config verificada.
       listoParaEnviar: !!tienda.emailProveedor && tienda.emailVerificadoConfig,
     };
+  }
+
+  // Elimina la configuración de email del dueño: limpia proveedor, remitente,
+  // credencial cifrada y datos SMTP, y marca la config como no verificada.
+  // Después de esto, el dueño no puede enviar campañas hasta reconfigurar.
+  async eliminarConfigEmail(usuarioId: number) {
+    const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
+    if (!tienda) {
+      throw new ErrorApi("No tenés ninguna tienda creada", 404);
+    }
+    await this.repository.actualizar(tienda.id, {
+      emailProveedor: null,
+      emailRemitente: null,
+      emailRemitenteNombre: null,
+      emailHost: null,
+      emailPort: null,
+      emailUsuario: null,
+      emailCredencial: null,
+      emailVerificadoConfig: false,
+    });
+    return this.obtenerConfigEmail(usuarioId);
   }
 
   // Prueba REAL que las credenciales funcionan. Para SMTP/Gmail abre la conexión

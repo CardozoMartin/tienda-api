@@ -73,6 +73,7 @@ export const ActualizarTemaSchema = z.object({
   modoOscuro: z.boolean().optional(),
   navbarStyle: z.string().optional(),
   navbarVariante: z.enum(['CLASICO', 'PILL']).optional(),
+  footerVariante: z.enum(['CENTRADO', 'COLUMNAS']).optional(),
   heroTitulo: z.string().max(200).optional(),
   heroSubtitulo: z.string().max(300).optional(),
   heroCtaTexto: z.string().max(100).optional(),

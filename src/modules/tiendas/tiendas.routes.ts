@@ -100,6 +100,7 @@ router.delete('/mi-tienda/logo', ...soloOwner, controller.eliminarLogo);
 router.get('/mi-tienda/email-config', ...soloOwner, controller.obtenerConfigEmail);
 router.put('/mi-tienda/email-config', ...soloOwner, validar(GuardarConfigEmailSchema), controller.guardarConfigEmail);
 router.post('/mi-tienda/email-config/verificar', ...soloOwner, controller.verificarConfigEmail);
+router.delete('/mi-tienda/email-config', ...soloOwner, controller.eliminarConfigEmail);
 
 // Dominio propio
 router.get('/mi-tienda/dominio', ...soloOwner, controller.obtenerEstadoDominio);

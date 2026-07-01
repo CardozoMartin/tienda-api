@@ -120,7 +120,6 @@ export class TiendasRepository {
     nombre: string;
     titulo?: string;
     descripcion?: string;
-    plantillaId?: number;
     whatsapp?: string;
     instagram?: string;
     facebook?: string;

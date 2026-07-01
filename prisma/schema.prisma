@@ -121,6 +121,7 @@ model TiendaTemaConfig {
   colorAcento       String?          @db.Char(7)
   navbarStyle       NavbarStyle      @default(TRANSPARENT)
   navbarVariante    NavbarVariante   @default(CLASICO)
+  footerVariante    FooterVariante   @default(CENTRADO)
   heroTitulo        String?          @db.VarChar(200)
   heroSubtitulo     String?          @db.VarChar(300)
   heroCtaTexto      String?          @db.VarChar(100)
@@ -590,6 +591,12 @@ enum NavbarStyle {
 enum NavbarVariante {
   CLASICO
   PILL
+}
+
+// Diseño/layout del footer.
+enum FooterVariante {
+  CENTRADO
+  COLUMNAS
 }
 
 enum EstadoPedido {
