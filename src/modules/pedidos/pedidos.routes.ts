@@ -13,5 +13,6 @@ router.post('/', autenticarOpcional, controller.crear);
 router.get('/', autenticar, controller.listar);
 router.get('/:id', autenticar, controller.obtenerPorId);
 router.patch('/:id/estado', autenticar, controller.actualizarEstado);
+router.patch('/:id/estado-pago', autenticar, controller.actualizarEstadoPago);
 
 export default router;

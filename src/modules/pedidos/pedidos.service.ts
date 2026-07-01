@@ -1,5 +1,7 @@
 import { PedidosRepository } from './pedidos.repository';
 import { CarritoRepository } from '../carrito/carrito.repository';
+import { CuponesService } from '../cupones/cupones.service';
+import { prisma } from '../../config/prisma';
 import { ErrorApi } from '../../types';
 import { CrearPedidoDto, ActualizarEstadoPedidoDto, FiltrosPedidosDto } from './pedidos.dto';
 import { 
@@ -12,10 +14,12 @@ import {
 export class PedidosService {
   private repository: PedidosRepository;
   private carritoRepository: CarritoRepository;
+  private cuponesService: CuponesService;
 
   constructor() {
     this.repository = new PedidosRepository();
     this.carritoRepository = new CarritoRepository();
+    this.cuponesService = new CuponesService();
   }
 
   async crear(tiendaId: number, sessionId: string, datos: CrearPedidoDto, clienteId?: number) {
@@ -43,16 +47,43 @@ export class PedidosService {
       };
     });
 
+    // 2b. Aplicar cupón si vino un código
+    let descuento = 0;
+    let cuponId: number | null = null;
+    let cuponCodigo: string | null = null;
+    if (datos.cuponCodigo && datos.cuponCodigo.trim()) {
+      // Valida (existe, activo, vigente, no superó usos, cumple mínimo) y calcula el descuento
+      const valido = await this.cuponesService.validar(tiendaId, datos.cuponCodigo, subtotal);
+      descuento = valido.descuento;
+      cuponId = valido.id;
+      cuponCodigo = valido.codigo;
+    }
+
+    const costoEnvio = Number(datos.costoEnvio || 0);
+    const total = Math.max(0, subtotal - descuento + costoEnvio);
+
     // 3. Crear pedido
+    const { cuponCodigo: _drop, ...datosSinCupon } = datos;
     const pedido = await this.repository.crear({
       tiendaId,
       clienteId,
-      ...datos,
+      ...datosSinCupon,
       subtotal,
-      costoEnvio: datos.costoEnvio || 0,
-      total: subtotal + Number(datos.costoEnvio || 0),
+      costoEnvio,
+      descuento,
+      cuponId,
+      cuponCodigo,
+      total,
       items,
     });
+
+    // 3b. Incrementar el uso del cupón
+    if (cuponId) {
+      await prisma.cupon.update({
+        where: { id: cuponId },
+        data: { usoActual: { increment: 1 } },
+      });
+    }
 
     // 4. Vaciar carrito tras éxito (eliminamos el carrito completo)
     await this.carritoRepository.eliminarCarrito(carrito.id);
@@ -119,6 +150,14 @@ export class PedidosService {
     );
 
     return pedidoActualizado;
+  }
+
+  async actualizarEstadoPago(id: number, estadoPago: string) {
+    const VALIDOS = ['PENDIENTE', 'APROBADO', 'RECHAZADO', 'EN_PROCESO', 'DEVUELTO', 'CANCELADO'];
+    if (!VALIDOS.includes(estadoPago)) {
+      throw new ErrorApi('Estado de pago inválido', 400);
+    }
+    return this.repository.actualizarEstadoPago(id, estadoPago);
   }
 
   private async enviarNotificacionCambioEstado(pedidoId: number, nuevoEstado: any) {

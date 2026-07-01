@@ -28,7 +28,7 @@ export class ProductosRepository {
   async buscarPorNombre(nombre: string, tiendaId: number, excludeProductoId?: number) {
     const where: any = {
       tiendaId,
-      nombre: { equals: nombre.trim(), mode: 'insensitive' },
+      nombre: nombre.trim(),
     };
 
     if (excludeProductoId) {
@@ -208,7 +208,7 @@ export class ProductosRepository {
   }
 
   async actualizarVariante(varianteId: number, productoId: number, datos: WhereInput) {
-    return prisma.productoVariante.updateMany({
+    return prisma.productoVariante.update({
       where: { id: varianteId, productoId },
       data: datos,
     });
@@ -216,6 +216,17 @@ export class ProductosRepository {
 
   async eliminarVariante(varianteId: number, productoId: number): Promise<void> {
     await prisma.productoVariante.deleteMany({ where: { id: varianteId, productoId } });
+  }
+
+  async buscarVariantePorSku(sku: string, tiendaId: number, excluirVarianteId?: number) {
+    return prisma.productoVariante.findFirst({
+      where: {
+        sku,
+        producto: { tiendaId },
+        ...(excluirVarianteId && { NOT: { id: excluirVarianteId } }),
+      },
+      select: { id: true },
+    });
   }
 
   // ── Categorías (Globales) ──

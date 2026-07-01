@@ -31,6 +31,22 @@ export class AiController {
           tags: true,
           imagenes: { orderBy: { orden: 'asc' } },
           variantes: true,
+          // Datos reales de ventas para enriquecer el copy
+          pedidoItems: {
+            select: {
+              cantidad: true,
+              subtotal: true,
+            },
+          },
+          // Reseñas aprobadas para prueba social
+          resenas: {
+            where: { aprobada: true, eliminada: false },
+            select: {
+              calificacion: true,
+              comentario: true,
+            },
+            take: 10,
+          },
           tienda: {
             include: {
               metodosPago: { include: { metodoPago: true } },

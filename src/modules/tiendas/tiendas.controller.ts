@@ -6,12 +6,15 @@ import {
   ActualizarTemaDto,
   ActualizarTiendaDto,
   AgregarImagenCarruselDto,
+  ActualizarImagenCarruselDto,
   AgregarMetodoEntregaDto,
   AgregarMetodoPagoDto,
   CrearTiendaDto,
   FiltrosTiendasDto,
   ActualizarAboutUsDto,
   ActualizarMarqueeDto,
+  CambiarSlugDto,
+  GuardarConfigEmailDto,
 } from './tiendas.dto';
 import { TiendasService } from './tiendas.service';
 
@@ -39,6 +42,89 @@ export class TiendasController {
       const { slug } = req.params as { slug: string };
       const tienda = await this.service.obtenerPorSlug(slug);
       responderOk(res, tienda, 'Tienda obtenida exitosamente');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para obtener una tienda por su dominio propio (storefront servido en dominio del cliente)
+  obtenerPorDominio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const host = (req.query['host'] as string) ?? '';
+      if (!host) {
+        throw new ErrorApi('Falta el parámetro host', 400);
+      }
+      const tienda = await this.service.obtenerPorDominio(host);
+      responderOk(res, tienda, 'Tienda obtenida exitosamente');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para que el dueño cargue/cambie el dominio propio de su tienda
+  guardarDominio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const { dominio } = req.body as { dominio: string };
+      const resultado = await this.service.guardarDominio(usuarioId, dominio);
+      responderOk(res, resultado, 'Dominio guardado. Configurá el registro TXT para verificarlo.');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para verificar la propiedad del dominio (consulta el DNS real)
+  verificarDominio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.verificarDominio(usuarioId);
+      responderOk(res, resultado, 'Verificación de dominio completada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para obtener el estado del dominio del dueño (para el panel)
+  obtenerEstadoDominio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.obtenerEstadoDominio(usuarioId);
+      responderOk(res, resultado, 'Estado del dominio obtenido');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ── Config de email marketing (proveedor propio del dueño) ──
+
+  //controlador para guardar/actualizar la config del proveedor de email del dueño
+  guardarConfigEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.guardarConfigEmail(usuarioId, req.body as GuardarConfigEmailDto);
+      responderOk(res, resultado, 'Configuración de email guardada. Verificá la conexión para empezar a enviar.');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para obtener el estado de la config de email (para el panel)
+  obtenerConfigEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.obtenerConfigEmail(usuarioId);
+      responderOk(res, resultado, 'Configuración de email obtenida');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para verificar la conexión con el proveedor de email del dueño
+  verificarConfigEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.verificarConfigEmail(usuarioId);
+      responderOk(res, resultado, 'Conexión de email verificada');
     } catch (error) {
       next(error);
     }
@@ -126,57 +212,67 @@ export class TiendasController {
     }
   };
 
-  /**
-   * DELETE /tiendas/mi-tienda/metodos-pago/:metodoPagoId
-   */
+  actualizarMetodoPago = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const metodoPagoId = parseInt(req.params['metodoPagoId'] as string, 10);
+      const resultado = await this.service.actualizarMetodoPago(usuarioId, metodoPagoId, req.body);
+      responderOk(res, resultado);
+    } catch (error) { next(error); }
+  };
+
   eliminarMetodoPago = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const metodoPagoId = parseInt(req.params['metodoPagoId'] as string, 10);
       await this.service.eliminarMetodoPago(usuarioId, metodoPagoId);
       responderOk(res, null, 'Método de pago eliminado');
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   };
 
   // ── Métodos de entrega ──
 
-  /**
-   * POST /tiendas/mi-tienda/metodos-entrega
-   */
   agregarMetodoEntrega = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
-      const resultado = await this.service.agregarMetodoEntrega(
-        usuarioId,
-        req.body as AgregarMetodoEntregaDto
-      );
+      const resultado = await this.service.agregarMetodoEntrega(usuarioId, req.body as AgregarMetodoEntregaDto);
       responderOk(res, resultado, 'Método de entrega agregado', 201);
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   };
 
-  /**
-   * DELETE /tiendas/mi-tienda/metodos-entrega/:metodoEntregaId
-   */
-  eliminarMetodoEntrega = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
+  actualizarMetodoEntrega = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const metodoEntregaId = parseInt(req.params['metodoEntregaId'] as string, 10);
+      const resultado = await this.service.actualizarMetodoEntrega(usuarioId, metodoEntregaId, req.body);
+      responderOk(res, resultado);
+    } catch (error) { next(error); }
+  };
+
+  eliminarMetodoEntrega = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const metodoEntregaId = parseInt(req.params['metodoEntregaId'] as string, 10);
       await this.service.eliminarMetodoEntrega(usuarioId, metodoEntregaId);
       responderOk(res, null, 'Método de entrega eliminado');
+    } catch (error) { next(error); }
+  };
+
+  // ── Carrusel ──
+
+  /**
+   * GET /tiendas/mi-tienda/carrusel
+   * Lista todas las secciones (incluyendo inactivas y programadas) para el panel admin
+   */
+  listarCarruselAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const secciones = await this.service.listarCarruselAdmin(usuarioId);
+      responderOk(res, secciones, 'Secciones hero obtenidas');
     } catch (error) {
       next(error);
     }
   };
-
-  // ── Carrusel ──
 
   /**
    * POST /tiendas/mi-tienda/carrusel
@@ -214,6 +310,22 @@ export class TiendasController {
       const imagenId = parseInt(req.params['imagenId'] as string, 10);
       await this.service.eliminarImagenCarrusel(usuarioId, imagenId);
       responderOk(res, null, 'Imagen eliminada del carrusel');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PUT /tiendas/mi-tienda/carrusel/:imagenId
+   * Edita metadatos de una sección (título, tipo, fechas, activa, etiqueta)
+   */
+  actualizarImagenCarrusel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const imagenId = parseInt(req.params['imagenId'] as string, 10);
+      const datos = req.body as ActualizarImagenCarruselDto;
+      const secciones = await this.service.actualizarImagenCarrusel(usuarioId, imagenId, datos);
+      responderOk(res, secciones, 'Sección actualizada');
     } catch (error) {
       next(error);
     }
@@ -279,6 +391,18 @@ export class TiendasController {
     }
   };
 
+  subirImagenBannerPromo = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const file = req.file as Express.Multer.File;
+      if (!file) throw new ErrorApi('No se subió ninguna imagen', 400);
+      const resultado = await this.service.subirImagenBannerPromo(usuarioId, file);
+      responderOk(res, resultado, 'Imagen del banner promocional actualizada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // ── Marquee ──
 
   /**
@@ -303,6 +427,67 @@ export class TiendasController {
       const datos = req.body as ActualizarMarqueeDto;
       const resultado = await this.service.actualizarMarquee(usuarioId, datos);
       responderOk(res, resultado, 'Items del carrusel de marcas actualizados');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ── Logo ──
+
+  /**
+   * POST /tiendas/mi-tienda/logo
+   */
+  subirLogo = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const file = req.file as Express.Multer.File;
+      if (!file) throw new ErrorApi('No se subió ninguna imagen', 400);
+      const resultado = await this.service.subirLogo(usuarioId, file);
+      responderOk(res, resultado, 'Logo actualizado');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * DELETE /tiendas/mi-tienda/logo
+   */
+  eliminarLogo = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.eliminarLogo(usuarioId);
+      responderOk(res, resultado, 'Logo eliminado');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ── Slug ──
+
+  /**
+   * PATCH /tiendas/mi-tienda/slug
+   */
+  cambiarSlug = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const datos = req.body as CambiarSlugDto;
+      const resultado = await this.service.cambiarSlug(usuarioId, datos);
+      responderOk(res, resultado, 'Slug actualizado');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /tiendas/mi-tienda/slug/verificar?slug=...
+   */
+  verificarSlug = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const { slug } = req.query as { slug: string };
+      if (!slug) throw new ErrorApi('El slug es requerido', 400);
+      const resultado = await this.service.verificarSlug(slug, usuarioId);
+      responderOk(res, resultado, resultado.disponible ? 'Slug disponible' : 'Slug no disponible');
     } catch (error) {
       next(error);
     }

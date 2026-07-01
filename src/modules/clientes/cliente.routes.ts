@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { autenticar, autenticarCliente } from '../../middleware/auth.middleware';
+import { autenticar, autenticarCliente, autorizar } from '../../middleware/auth.middleware';
 import { validar } from '../../middleware/validar.middleware';
+import { RolUsuario } from '@prisma/client';
 
 import {
   ActualizarClienteSchema,
@@ -47,5 +48,10 @@ router.post(
 
 // Ruta protegida exclusiva para clientes: ver sus propios pedidos
 router.get('/mis-pedidos', autenticarCliente, controllerCliente.obtenerMisPedidos);
+
+// ── Rutas del owner (dashboard) ──
+const soloOwner = [autenticar, autorizar(RolUsuario.OWNER, RolUsuario.ADMIN)];
+router.get('/mi-tienda',            ...soloOwner, controllerCliente.listarClientesTienda);
+router.get('/mi-tienda/:clienteId', ...soloOwner, controllerCliente.obtenerDetalleCliente);
 
 export default router;

@@ -1,10 +1,30 @@
 
 import { prisma } from '../../config/prisma';
 import { calcularSkip } from '../../utils/helpers';
-import { ActualizarTemaDto, FiltrosTiendasDto } from './tiendas.dto';
+import { ActualizarImagenCarruselDto, ActualizarTemaDto, FiltrosTiendasDto } from './tiendas.dto';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type WhereInput = Record<string, any>;
+
+// Filtro para queries públicas: sección activa y dentro del rango de fechas programado
+function carruselPublicoWhere() {
+  const ahora = new Date();
+  return {
+    activa: true,
+    OR: [
+      { fechaDesde: null },
+      { fechaDesde: { lte: ahora } },
+    ],
+    AND: [
+      {
+        OR: [
+          { fechaHasta: null },
+          { fechaHasta: { gte: ahora } },
+        ],
+      },
+    ],
+  };
+}
 
 export class TiendasRepository {
 
@@ -18,7 +38,26 @@ export class TiendasRepository {
         temaConfig: true,
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
-        carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+        carrusel: { where: carruselPublicoWhere(), orderBy: { orden: 'asc' } },
+        aboutUs: true,
+        marqueeItems: { orderBy: { orden: 'asc' } },
+        _count: { select: { productos: true, resenas: true } },
+      },
+    });
+  }
+
+  //Query para obtener la tienda por su dominio propio (ej: www.mitienda.com).
+  //Misma forma que buscarPorSlug, solo cambia la llave de búsqueda.
+  async buscarPorDominio(dominio: string): Promise<any> {
+    return prisma.tienda.findUnique({
+      where: { dominioPersonalizado: dominio },
+      include: {
+        usuario: { select: { id: true, nombre: true, apellido: true, avatarUrl: true } },
+        plantilla: true,
+        temaConfig: true,
+        metodosPago: { include: { metodoPago: true } },
+        metodosEntrega: { include: { metodoEntrega: true } },
+        carrusel: { where: carruselPublicoWhere(), orderBy: { orden: 'asc' } },
         aboutUs: true,
         marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
@@ -36,7 +75,7 @@ export class TiendasRepository {
         temaConfig: true,
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
-        carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+        carrusel: { where: carruselPublicoWhere(), orderBy: { orden: 'asc' } },
         aboutUs: true,
         marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
@@ -55,6 +94,18 @@ export class TiendasRepository {
       where: {
         slug,
         // Si excluirId está presente, excluimos esa tienda de la búsqueda (para updates)
+        ...(excluirId && { id: { not: excluirId } }),
+      },
+      select: { id: true },
+    });
+    return tienda !== null;
+  }
+
+  // Verifica si un dominio ya está tomado por otra tienda (excluyendo la propia en updates).
+  async existeDominio(dominio: string, excluirId?: number): Promise<boolean> {
+    const tienda = await prisma.tienda.findFirst({
+      where: {
+        dominioPersonalizado: dominio,
         ...(excluirId && { id: { not: excluirId } }),
       },
       select: { id: true },
@@ -108,7 +159,7 @@ export class TiendasRepository {
           temaConfig: true,
           metodosPago: { include: { metodoPago: true } },
           metodosEntrega: { include: { metodoEntrega: true } },
-          carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+          carrusel: { where: carruselPublicoWhere(), orderBy: { orden: 'asc' } },
           aboutUs: true,
           marqueeItems: { orderBy: { orden: 'asc' } },
           _count: { select: { productos: true, resenas: true } },
@@ -128,7 +179,7 @@ export class TiendasRepository {
         temaConfig: true,
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
-        carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+        carrusel: { where: carruselPublicoWhere(), orderBy: { orden: 'asc' } },
         aboutUs: true,
         marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
@@ -174,7 +225,7 @@ export class TiendasRepository {
           temaConfig: true,
           metodosPago: { include: { metodoPago: true } },
           metodosEntrega: { include: { metodoEntrega: true } },
-          carrusel: { where: { activa: true }, orderBy: { orden: 'asc' } },
+          carrusel: { where: carruselPublicoWhere(), orderBy: { orden: 'asc' } },
           aboutUs: true,
           marqueeItems: { orderBy: { orden: 'asc' } },
           _count: { select: { productos: true, resenas: true } },
@@ -188,10 +239,16 @@ export class TiendasRepository {
 
   //Query para incrementar el contador de vistas de una tienda cada vez que se accede a su página pública
   async incrementarVistas(id: number): Promise<void> {
-    await prisma.tienda.update({
-      where: { id },
-      data: { vistas: { increment: 1 } },
-    });
+    // Contador acumulado + registro del evento con fecha (para analytics por día)
+    await prisma.$transaction([
+      prisma.tienda.update({
+        where: { id },
+        data: { vistas: { increment: 1 } },
+      }),
+      prisma.visitaTienda.create({
+        data: { tiendaId: id },
+      }),
+    ]);
   }
 
   // obtener el catalogo de medoso de pago
@@ -213,9 +270,17 @@ export class TiendasRepository {
 
   //Métodos de pago (tienda)
 
-  async agregarMetodoPago(tiendaId: number, metodoPagoId: number, detalle?: string) {
+  async agregarMetodoPago(tiendaId: number, metodoPagoId: number, detalle?: string, configExtra?: any) {
     return prisma.metodoPagoTienda.create({
-      data: { tiendaId, metodoPagoId, detalle },
+      data: { tiendaId, metodoPagoId, detalle, configExtra },
+      include: { metodoPago: true },
+    });
+  }
+
+  async actualizarMetodoPago(tiendaId: number, metodoPagoId: number, datos: { detalle?: string; configExtra?: any }) {
+    return prisma.metodoPagoTienda.update({
+      where: { tiendaId_metodoPagoId: { tiendaId, metodoPagoId } },
+      data: datos,
       include: { metodoPago: true },
     });
   }
@@ -230,11 +295,22 @@ export class TiendasRepository {
   async agregarMetodoEntrega(
     tiendaId: number,
     metodoEntregaId: number,
-    zonaCobertura?: string,
-    detalle?: string
+    datos: { zonaCobertura?: string; detalle?: string; costo?: number; costoGratis?: number; tiempoEstimado?: string }
   ) {
     return prisma.metodoEntregaTienda.create({
-      data: { tiendaId, metodoEntregaId, zonaCobertura, detalle },
+      data: { tiendaId, metodoEntregaId, ...datos },
+      include: { metodoEntrega: true },
+    });
+  }
+
+  async actualizarMetodoEntrega(
+    tiendaId: number,
+    metodoEntregaId: number,
+    datos: { zonaCobertura?: string; detalle?: string; costo?: number | null; costoGratis?: number | null; tiempoEstimado?: string }
+  ) {
+    return prisma.metodoEntregaTienda.update({
+      where: { tiendaId_metodoEntregaId: { tiendaId, metodoEntregaId } },
+      data: datos,
       include: { metodoEntrega: true },
     });
   }
@@ -249,14 +325,38 @@ export class TiendasRepository {
 
   async agregarImagenCarrusel(
     tiendaId: number,
-    datos: { url: string; titulo?: string; subtitulo?: string; linkUrl?: string; orden: number }
+    datos: {
+      url: string;
+      titulo?: string;
+      subtitulo?: string;
+      linkUrl?: string;
+      orden: number;
+      tipo?: string;
+      etiqueta?: string;
+      fechaDesde?: Date | null;
+      fechaHasta?: Date | null;
+    }
   ) {
-    return prisma.carruselImagen.create({ data: { tiendaId, ...datos } });
+    return prisma.carruselImagen.create({ data: { tiendaId, ...datos } as any });
+  }
+
+  async actualizarImagenCarrusel(imagenId: number, tiendaId: number, datos: ActualizarImagenCarruselDto) {
+    return prisma.carruselImagen.updateMany({
+      where: { id: imagenId, tiendaId },
+      data: datos as any,
+    });
+  }
+
+  async listarCarruselAdmin(tiendaId: number) {
+    return prisma.carruselImagen.findMany({
+      where: { tiendaId },
+      orderBy: { orden: 'asc' },
+    });
   }
 
   async eliminarImagenCarrusel(imagenId: number, tiendaId: number): Promise<void> {
     await prisma.carruselImagen.deleteMany({
-      where: { id: imagenId, tiendaId }, // Verificamos que pertenezca a la tienda
+      where: { id: imagenId, tiendaId },
     });
   }
 
@@ -264,7 +364,6 @@ export class TiendasRepository {
     tiendaId: number,
     orden: Array<{ id: number; orden: number }>
   ): Promise<void> {
-    // Actualizamos el orden de cada imagen en paralelo dentro de una transacción
     await prisma.$transaction(
       orden.map(({ id, orden: nuevoOrden }) =>
         prisma.carruselImagen.updateMany({

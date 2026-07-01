@@ -27,6 +27,7 @@ import { crearApp } from "./app";
 import { prisma } from "./config/prisma";
 import { inicializarMailer, verificarMailer } from "./config/mailer";
 import { logger } from "./utils/logger";
+import { dispararProcesamiento } from "./modules/campanas/campanas.worker";
 
 
 async function iniciar(): Promise<void> {
@@ -54,6 +55,10 @@ async function iniciar(): Promise<void> {
       logger.info(`   API:      http://localhost:${env.PORT}${env.API_PREFIX}`);
       logger.info(`   Health:   http://localhost:${env.PORT}/health`);
     });
+
+    // Retomamos campañas que quedaron encoladas/a medias de un envío anterior
+    // (el estado vive en la BD, así que sobrevive a reinicios del server).
+    dispararProcesamiento();
 
  
 

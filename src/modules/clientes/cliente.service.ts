@@ -56,7 +56,7 @@ export class ClienteService {
     const tienda = await this.tiendarepo.buscarPorId(input.tiendaId);
     console.log('Tienda encontrada para email de verificación:', tienda);
     // Enviar email de verificación (sin await para no bloquear)
-    enviarEmailVerificacionAlCliente(input.email, input.nombre, tokenVerif, tienda.nombre).catch(
+    enviarEmailVerificacionAlCliente(input.email, input.nombre, tokenVerif, tienda.nombre, tienda.slug).catch(
       (err: Error) => console.error('Error enviando email verificación:', err)
     );
 
@@ -153,7 +153,7 @@ export class ClienteService {
 
     // Enviar email
     const tienda = await this.tiendarepo.buscarPorId(input.tiendaId);
-    await enviarEmailResetPassword(cliente.email, cliente.nombre, token, tienda.nombre);
+    await enviarEmailResetPassword(cliente.email, cliente.nombre, token, tienda.nombre, tienda.slug);
 
     return { mensaje: mensajeOk };
   }
@@ -200,6 +200,29 @@ export class ClienteService {
       apellido: cliente.apellido,
       telefono: cliente.telefono,
       mensaje: 'Perfil actualizado correctamente',
+    };
+  }
+
+  // ── Owner: listar clientes de su tienda ──
+
+  async listarClientesTienda(tiendaId: number, filtros: { busqueda?: string; pagina: number; limite: number }) {
+    return this.repo.listarPorTienda(tiendaId, filtros);
+  }
+
+  async obtenerDetalleCliente(clienteId: number, tiendaId: number) {
+    const cliente = await this.repo.obtenerDetalleOwner(clienteId, tiendaId);
+    if (!cliente) throw new ErrorApi('Cliente no encontrado', 404);
+
+    const pedidos = (cliente as any).pedidos ?? [];
+    const totalGastado = pedidos.reduce((sum: number, p: any) => sum + Number(p.total ?? 0), 0);
+
+    return {
+      ...cliente,
+      stats: {
+        totalPedidos: pedidos.length,
+        totalGastado,
+        pedidosAprobados: pedidos.filter((p: any) => p.estadoPago === 'APROBADO').length,
+      },
     };
   }
 

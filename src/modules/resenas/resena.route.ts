@@ -37,6 +37,13 @@ resenasTiendaRouter.post(
 );
 resenasTiendaRouter.delete('/:resenaId', ...soloOwner, controller.eliminarTienda);
 
+// Router PÚBLICO de reseñas de producto (solo lectura).
+// Montado en /tiendas/:tiendaId/productos/:productoId/resenas
+export const resenasProductoPublicoRouter = Router({ mergeParams: true });
+
+resenasProductoPublicoRouter.get('/', validar(FiltrosResenasSchema, 'query'), controller.listarProducto);
+resenasProductoPublicoRouter.get('/estadisticas', controller.estadisticasProducto);
+
 // Router montado en /mis-productos/:productoId/resenas
 export const resenasProductoRouter = Router({ mergeParams: true });
 

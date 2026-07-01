@@ -132,6 +132,11 @@ export class ProductosService {
       disponible: Boolean(variante.disponible),
     }));
 
+    // Si el producto tiene variantes, el stock del producto es la suma de sus variantes
+    const stockFinal = variantes.length > 0
+      ? variantes.reduce((acc, v) => acc + v.stock, 0)
+      : stock;
+
     const nuevoProducto = await this.repository.crear({
       tiendaId: tienda.id,
       nombre: nombreNormalizado,
@@ -144,7 +149,7 @@ export class ProductosService {
       categoriaId: (datos.categoriaId as any) === '' ? undefined : Number(datos.categoriaId),
       disponible: Boolean(datos.disponible),
       destacado: Boolean(datos.destacado),
-      stock,
+      stock: stockFinal,
       tags,
       variantes,
     });
@@ -157,7 +162,7 @@ export class ProductosService {
    */
   async actualizar(usuarioId: number, productoId: number, datos: ActualizarProductoDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
-    await this.verificarProductoOFallar(productoId, tienda.id);
+    const productoActual = await this.verificarProductoOFallar(productoId, tienda.id);
 
     const sanitizedData = { ...datos } as any;
 
@@ -173,7 +178,7 @@ export class ProductosService {
       }
     }
 
-    if (sanitizedData.precioOferta === '') sanitizedData.precioOferta = undefined;
+    if (sanitizedData.precioOferta === '') sanitizedData.precioOferta = null;
     if (sanitizedData.categoriaId === '') sanitizedData.categoriaId = undefined;
 
     if (sanitizedData.stock !== undefined) {
@@ -185,8 +190,18 @@ export class ProductosService {
 
     if (sanitizedData.precio !== undefined) {
       sanitizedData.precio = Number(sanitizedData.precio);
+
+      // Histórico de precio: si el nuevo precio BAJA respecto al actual,
+      // guardamos el precio viejo en precioAnterior (para mostrar el tachado + %).
+      // Si sube o queda igual, limpiamos precioAnterior.
+      const precioActual = Number(productoActual.precio);
+      if (sanitizedData.precio < precioActual) {
+        sanitizedData.precioAnterior = precioActual;
+      } else {
+        sanitizedData.precioAnterior = null;
+      }
     }
-    if (sanitizedData.precioOferta !== undefined) {
+    if (sanitizedData.precioOferta !== undefined && sanitizedData.precioOferta !== null) {
       sanitizedData.precioOferta = Number(sanitizedData.precioOferta);
     }
     if (sanitizedData.categoriaId !== undefined) {
@@ -274,10 +289,20 @@ export class ProductosService {
   async crearVariante(usuarioId: number, productoId: number, datos: CrearVarianteDto) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
+
+    if (datos.sku) {
+      const skuExistente = await this.repository.buscarVariantePorSku(datos.sku.trim(), tienda.id);
+      if (skuExistente) {
+        throw new ErrorApi(`Ya existe una variante con el SKU "${datos.sku.trim()}"`, 409);
+      }
+    }
+
     const variante = await this.repository.crearVariante(productoId, {
       ...datos,
-      stock: Number(datos.stock || 0)
+      sku: datos.sku?.trim() || undefined,
+      stock: Number(datos.stock || 0),
     });
+    await this.sincronizarStockDesdeVariantes(productoId);
     this.invalidarCacheProductos(tienda.id);
     return variante;
   }
@@ -290,7 +315,23 @@ export class ProductosService {
   ) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
-    const variante = await this.repository.actualizarVariante(varianteId, productoId, datos);
+
+    if (datos.sku) {
+      const skuExistente = await this.repository.buscarVariantePorSku(
+        datos.sku.trim(),
+        tienda.id,
+        varianteId
+      );
+      if (skuExistente) {
+        throw new ErrorApi(`Ya existe una variante con el SKU "${datos.sku.trim()}"`, 409);
+      }
+    }
+
+    const variante = await this.repository.actualizarVariante(varianteId, productoId, {
+      ...datos,
+      sku: datos.sku?.trim() || undefined,
+    });
+    await this.sincronizarStockDesdeVariantes(productoId);
     this.invalidarCacheProductos(tienda.id);
     return variante;
   }
@@ -299,6 +340,7 @@ export class ProductosService {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.verificarProductoOFallar(productoId, tienda.id);
     await this.repository.eliminarVariante(varianteId, productoId);
+    await this.sincronizarStockDesdeVariantes(productoId);
     this.invalidarCacheProductos(tienda.id);
   }
 
@@ -313,6 +355,16 @@ export class ProductosService {
     const variante = await this.repository.actualizarVariante(varianteId, productoId, { imagenUrl });
     this.invalidarCacheProductos(tienda.id);
     return variante;
+  }
+
+  private async sincronizarStockDesdeVariantes(productoId: number) {
+    const variantes = await prisma.productoVariante.findMany({
+      where: { productoId },
+      select: { stock: true },
+    });
+    if (variantes.length === 0) return;
+    const stockTotal = variantes.reduce((acc: number, v: { stock: number }) => acc + v.stock, 0);
+    await prisma.producto.update({ where: { id: productoId }, data: { stock: stockTotal } });
   }
 
   // ── Helpers privados ──
@@ -397,10 +449,7 @@ export class ProductosService {
 
     const productos = await prisma.producto.findMany({
       where: { tiendaId: tienda.id },
-      include: {
-        categoria: true,
-        tags: true,
-      },
+      include: { categoria: true, tags: true },
       orderBy: { nombre: 'asc' },
     });
 
@@ -410,8 +459,9 @@ export class ProductosService {
       Precio: Number(p.precio),
       'Precio Oferta': p.precioOferta ? Number(p.precioOferta) : '',
       Moneda: p.moneda,
-      Categoría: (p as any).categoria?.nombre || '',
-      Tags: (p as any).tags.map((t: any) => t.nombre).join(', '),
+      Stock: p.stock ?? 0,
+      Categoría: p.categoria?.nombre || '',
+      Tags: p.tags.map((t: any) => t.nombre).join(', '),
       Disponible: p.disponible ? 'SÍ' : 'NO',
       Destacado: p.destacado ? 'SÍ' : 'NO',
     }));
@@ -429,61 +479,69 @@ export class ProductosService {
     const sheetName = workbook.SheetNames[0];
     const data = XLSX.utils.sheet_to_json<any>(workbook.Sheets[sheetName]);
 
+    if (!data.length) throw new ErrorApi('El archivo Excel está vacío o no tiene el formato correcto', 400);
+
     let creados = 0;
     let actualizados = 0;
+    const errores: string[] = [];
 
-    // Obtenemos categorías existentes para mapear por nombre
     const categorias = await this.repository.listarCategorias();
 
-    for (const row of data) {
+    for (const [i, row] of data.entries()) {
+      const fila = i + 2; // Excel empieza en fila 2 (fila 1 = headers)
       const nombre = row.Nombre?.toString().trim();
-      if (!nombre) continue;
+      if (!nombre) { errores.push(`Fila ${fila}: nombre vacío, se omitió`); continue; }
+
+      const precio = Number(row.Precio);
+      if (!precio || precio <= 0) { errores.push(`Fila ${fila}: precio inválido para "${nombre}", se omitió`); continue; }
 
       const categoriaNombre = row.Categoría?.toString().trim();
       const categoria = categorias.find(
         (c: any) => c.nombre.toLowerCase() === categoriaNombre?.toLowerCase()
       );
 
-      const rowTags =
-        row.Tags?.toString()
-          .split(',')
-          .map((t: string) => t.trim())
-          .filter(Boolean) || [];
+      const rowTags: string[] = row.Tags
+        ? row.Tags.toString().split(',').map((t: string) => t.trim()).filter(Boolean)
+        : [];
+
+      const precioOfertaRaw = row['Precio Oferta'];
+      const precioOferta = precioOfertaRaw !== '' && precioOfertaRaw != null
+        ? Number(precioOfertaRaw)
+        : undefined;
 
       const payload = {
         nombre,
-        descripcion: row.Descripción?.toString() || '',
-        precio: Number(row.Precio) || 0,
-        precioOferta:
-          row['Precio Oferta'] && row['Precio Oferta'] !== ''
-            ? Number(row['Precio Oferta'])
-            : undefined,
-        moneda: row.Moneda?.toString() || 'ARS',
+        descripcion: row.Descripción?.toString().trim() || '',
+        precio,
+        precioOferta: precioOferta && precioOferta < precio ? precioOferta : undefined,
+        moneda: row.Moneda?.toString().toUpperCase() || 'ARS',
+        stock: Number(row.Stock ?? 0),
         categoriaId: categoria?.id,
         disponible: row.Disponible?.toString().toUpperCase() === 'SÍ' || row.Disponible === true,
         destacado: row.Destacado?.toString().toUpperCase() === 'SÍ' || row.Destacado === true,
       };
 
-      const existe = await this.repository.buscarPorNombre(nombre, tienda.id);
-
-      if (existe) {
-        await this.repository.actualizar(existe.id, {
-          ...payload,
-        } as any);
-        await this.repository.sincronizarTags(existe.id, rowTags);
-        actualizados++;
-      } else {
-        await this.repository.crear({
-          tiendaId: tienda.id,
-          ...(payload as any),
-          tags: rowTags,
-          variantes: [],
-        });
-        creados++;
+      try {
+        const existe = await this.repository.buscarPorNombre(nombre, tienda.id);
+        if (existe) {
+          await this.repository.actualizar(existe.id, payload as any);
+          await this.repository.sincronizarTags(existe.id, rowTags);
+          actualizados++;
+        } else {
+          await this.repository.crear({
+            tiendaId: tienda.id,
+            ...(payload as any),
+            tags: rowTags,
+            variantes: [],
+          });
+          creados++;
+        }
+      } catch (e: any) {
+        errores.push(`Fila ${fila} "${nombre}": ${e.message}`);
       }
     }
 
     this.invalidarCacheProductos(tienda.id);
-    return { creados, actualizados, total: data.length };
+    return { creados, actualizados, total: data.length, errores };
   }
 }

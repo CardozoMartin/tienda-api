@@ -5,7 +5,7 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB límite
+    fileSize: 15 * 1024 * 1024, // 15MB límite
   },
   fileFilter: (_req, file, cb) => {
     // Permitir imágenes y archivos Excel
