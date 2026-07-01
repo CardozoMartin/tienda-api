@@ -120,6 +120,7 @@ model TiendaTemaConfig {
   tiendaId          Int              @id
   colorAcento       String?          @db.Char(7)
   navbarStyle       NavbarStyle      @default(TRANSPARENT)
+  navbarVariante    NavbarVariante   @default(CLASICO)
   heroTitulo        String?          @db.VarChar(200)
   heroSubtitulo     String?          @db.VarChar(300)
   heroCtaTexto      String?          @db.VarChar(100)
@@ -585,6 +586,12 @@ enum NavbarStyle {
   FLOATING
 }
 
+// Diseño/layout del navbar (distinto de NavbarStyle, que es el comportamiento).
+enum NavbarVariante {
+  CLASICO
+  PILL
+}
+
 enum EstadoPedido {
   PENDIENTE
   CONFIRMADO
@@ -598,6 +605,7 @@ enum TipoSeccionHero {
   BANNER
   HERO_FIJO
   VIDEO
+  GALERIA
 }
 
 model TiendaPopup {
