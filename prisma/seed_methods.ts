@@ -5,8 +5,8 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Sincronizando métodos de pago y entrega...");
 
-  // ── Métodos a ELIMINAR (ya no los usamos) ──────────────────────────────────
-  const eliminar = [
+  // ── Métodos de PAGO a ELIMINAR (ya no los usamos) ──────────────────────────
+  const eliminarPago = [
     "Billetera Virtual (Ualá/MODO)",
     "Billetera Virtual",
     "Ualá",
@@ -14,8 +14,22 @@ async function main() {
     "Cuenta DNI",
     "Naranja X",
   ];
-  for (const nombre of eliminar) {
+  for (const nombre of eliminarPago) {
     await prisma.metodoPago.deleteMany({ where: { nombre } });
+  }
+
+  // ── Métodos de ENVÍO a ELIMINAR ────────────────────────────────────────────
+  // Correo Argentino / OCA, Andreani y Pickit: no hay forma de configurar esos
+  // servicios en la plataforma, así que los sacamos del catálogo.
+  const eliminarEntrega = [
+    "Correo Argentino / OCA",
+    "Correo Argentino",
+    "OCA",
+    "Andreani",
+    "Pickit",
+  ];
+  for (const nombre of eliminarEntrega) {
+    await prisma.metodoEntrega.deleteMany({ where: { nombre } });
   }
 
   // ── Métodos de Pago activos ────────────────────────────────────────────────
@@ -39,10 +53,8 @@ async function main() {
   const metodosEntrega = [
     { nombre: "Retiro en Local",       icono: "storefront",      descripcion: "Pasá por nuestra sucursal",                    permiteZona: false, orden: 1 },
     { nombre: "Envío a Domicilio",     icono: "local_shipping",  descripcion: "Entrega directa en tu puerta",                 permiteZona: true,  orden: 2 },
-    { nombre: "Correo Argentino / OCA",icono: "package_2",       descripcion: "Envío nacional por correo",                    permiteZona: false, orden: 3 },
-    { nombre: "Andreani",              icono: "package_2",       descripcion: "Envío nacional por Andreani",                  permiteZona: false, orden: 4 },
-    { nombre: "Punto de Encuentro",    icono: "handshake",       descripcion: "Acordamos un lugar cómodo para los dos",       permiteZona: true,  orden: 5 },
-    { nombre: "Motomensajería",        icono: "moped",           descripcion: "Envío rápido en el día (CABA / GBA)",          permiteZona: true,  orden: 6 },
+    { nombre: "Punto de Encuentro",    icono: "handshake",       descripcion: "Acordamos un lugar cómodo para los dos",       permiteZona: true,  orden: 3 },
+    { nombre: "Motomensajería",        icono: "moped",           descripcion: "Envío rápido en el día (CABA / GBA)",          permiteZona: true,  orden: 4 },
   ];
 
   for (const me of metodosEntrega) {

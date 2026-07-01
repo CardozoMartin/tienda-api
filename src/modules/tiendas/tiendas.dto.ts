@@ -236,3 +236,45 @@ export const GuardarDominioSchema = z.object({
 });
 
 export type GuardarDominioDto = z.infer<typeof GuardarDominioSchema>;
+
+// ─────────────────────────────────────────────
+// CONFIG DE EMAIL MARKETING (proveedor propio del dueño)
+// Cada tienda usa su propio servicio para enviar campañas:
+//  - "brevo": basta la API key (host/port no aplican).
+//  - "gmail" / "smtp": requieren host, puerto, usuario y password (app password en Gmail).
+// La credencial (API key o password) viaja en "credencial" y se cifra antes de guardar.
+// ─────────────────────────────────────────────
+
+export const GuardarConfigEmailSchema = z
+  .object({
+    proveedor: z.enum(['brevo', 'gmail', 'smtp'], {
+      required_error: 'Elegí un proveedor de email',
+      invalid_type_error: 'Proveedor inválido',
+    }),
+    remitente: z
+      .string({ required_error: 'El email del remitente es requerido' })
+      .trim()
+      .toLowerCase()
+      .email('Ingresá un email de remitente válido')
+      .max(180),
+    remitenteNombre: z.string().trim().max(120).optional(),
+    // Credencial: API key (brevo) o password/app-password (gmail/smtp).
+    // Opcional al editar: si no se manda, se conserva la credencial ya guardada.
+    credencial: z.string().trim().min(1, 'La credencial no puede estar vacía').max(500).optional(),
+    host: z.string().trim().max(180).optional(),
+    port: z.coerce.number().int().positive().max(65535).optional(),
+    usuario: z.string().trim().max(180).optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Para SMTP/Gmail necesitamos los datos de conexión.
+    if (data.proveedor === 'smtp' || data.proveedor === 'gmail') {
+      if (!data.host) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['host'], message: 'El host SMTP es requerido' });
+      }
+      if (!data.usuario) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['usuario'], message: 'El usuario SMTP es requerido' });
+      }
+    }
+  });
+
+export type GuardarConfigEmailDto = z.infer<typeof GuardarConfigEmailSchema>;

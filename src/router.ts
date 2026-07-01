@@ -15,6 +15,7 @@ import popupsRouter from './modules/popups/popups.routes';
 import pagosRouter, { webhookRouter, mpDashboardRouter } from './modules/pagos/pagos.routes';
 import analyticsRouter from './modules/analytics/analytics.routes';
 import { cuponesOwnerRouter, cuponesPublicoRouter } from './modules/cupones/cupones.routes';
+import campanasRouter from './modules/campanas/campanas.routes';
 
 const router = Router();
 
@@ -31,6 +32,7 @@ router.use('/analytics', analyticsRouter);
 router.use('/cupones', cuponesOwnerRouter);
 router.use('/tiendas/:tiendaId/cupones', cuponesPublicoRouter);
 router.use('/carrito', carritoRouter);
+router.use('/campanas', campanasRouter);
 router.use('/tiendas/:tiendaId/pedidos', pedidosRouter);
 router.use('/tiendas/:tiendaId/pedidos/:pedidoId', pagosRouter);
 router.use('/pedidos', pedidosRouter);

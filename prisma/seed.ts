@@ -45,10 +45,6 @@ async function main(): Promise<void> {
     { nombre: "Retiro en tienda",  icono: "home",    descripcion: "El cliente pasa a retirar en el local", permiteZona: false, orden: 1 },
     { nombre: "Punto de retiro",   icono: "map-pin", descripcion: "El cliente retira en un punto acordado", permiteZona: true,  orden: 2 },
     { nombre: "Envío a domicilio", icono: "truck",   descripcion: "Delivery en la zona cubierta",            permiteZona: true,  orden: 3 },
-    { nombre: "Correo Argentino",  icono: "envelope",descripcion: "Envío por Correo Argentino a todo el país", permiteZona: false, orden: 4 },
-    { nombre: "OCA",               icono: "package", descripcion: "Envío por OCA a todo el país",           permiteZona: false, orden: 5 },
-    { nombre: "Andreani",          icono: "package", descripcion: "Envío por Andreani a todo el país",      permiteZona: false, orden: 6 },
-    { nombre: "Pickit",            icono: "package", descripcion: "Red de puntos Pickit",                   permiteZona: false, orden: 7 },
   ];
 
   console.log("🚚 Creando métodos de entrega...");

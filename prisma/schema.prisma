@@ -66,6 +66,15 @@ model Tienda {
   pais           String?               @db.VarChar(80)
   provincia      String?               @db.VarChar(80)
   ciudad         String?               @db.VarChar(80)
+  // Configuración de email marketing (cada tienda usa su propio proveedor / credenciales).
+  emailProveedor   String?             @db.VarChar(30)  // "smtp" | "brevo" | ...
+  emailRemitente   String?             @db.VarChar(180) // desde qué dirección se envía
+  emailRemitenteNombre String?         @db.VarChar(120) // nombre visible del remitente
+  emailHost        String?             @db.VarChar(180) // host SMTP (ej: smtp.gmail.com)
+  emailPort        Int?                                 // puerto SMTP (ej: 587)
+  emailUsuario     String?             @db.VarChar(180) // usuario SMTP
+  emailCredencial  String?             @db.Text         // credencial CIFRADA (nunca en texto plano)
+  emailVerificadoConfig Boolean        @default(false)  // si ya se validó que las credenciales funcionan
   activa         Boolean               @default(true)
   publica        Boolean               @default(true)
   vistas         Int                   @default(0)
@@ -84,6 +93,7 @@ model Tienda {
   marqueeItems   TiendaMarqueeItem[]
   visitas_log    VisitaTienda[]
   cupones        Cupon[]
+  campanas       Campana[]
   temaConfig     TiendaTemaConfig?
   plantilla      PlantillaTienda?      @relation(fields: [plantillaId], references: [id])
   usuario        Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
@@ -633,4 +643,71 @@ enum EstadoPago {
   EN_PROCESO
   DEVUELTO
   CANCELADO
+}
+
+// ─────────────────────────────────────────────
+// EMAIL MARKETING — Campañas masivas
+// El dueño arma una campaña y la envía a un segmento de sus contactos.
+// El envío se procesa en background (worker) creando un CampanaEnvio por
+// destinatario, respetando un rate-limit del proveedor propio del dueño.
+// ─────────────────────────────────────────────
+
+enum SegmentoCampana {
+  CLIENTES_REGISTRADOS // todos los ClienteTienda verificados y activos
+  COMPRADORES          // emails que hicieron al menos un pedido
+  AMBOS                // registrados + compradores (deduplicado)
+}
+
+enum EstadoCampana {
+  BORRADOR   // creada, todavía no se mandó
+  ENCOLADA   // lista para procesar por el worker
+  ENVIANDO   // el worker está procesando sus envíos
+  ENVIADA    // todos los envíos procesados
+  FALLIDA    // no se pudo (ej. config de email inválida)
+}
+
+enum EstadoEnvio {
+  PENDIENTE
+  ENVIADO
+  FALLIDO
+}
+
+model Campana {
+  id                 Int             @id @default(autoincrement())
+  tiendaId           Int
+  asunto             String          @db.VarChar(200)
+  // Cuerpo en HTML (lo arma el compositor del front). Puede incluir la imagen.
+  cuerpoHtml         String          @db.Text
+  imagenUrl          String?         @db.VarChar(500)
+  segmento           SegmentoCampana
+  estado             EstadoCampana   @default(BORRADOR)
+  totalDestinatarios Int             @default(0)
+  enviados           Int             @default(0)
+  fallidos           Int             @default(0)
+  creadoEn           DateTime        @default(now())
+  actualizadoEn      DateTime        @updatedAt
+  encoladaEn         DateTime?
+  finalizadaEn       DateTime?
+  tienda             Tienda          @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  envios             CampanaEnvio[]
+
+  @@index([tiendaId])
+  @@index([estado])
+  @@map("campanas")
+}
+
+model CampanaEnvio {
+  id         Int         @id @default(autoincrement())
+  campanaId  Int
+  email      String      @db.VarChar(180)
+  nombre     String?     @db.VarChar(150)
+  estado     EstadoEnvio @default(PENDIENTE)
+  error      String?     @db.VarChar(500)
+  intentos   Int         @default(0)
+  enviadoEn  DateTime?
+  creadoEn   DateTime    @default(now())
+  campana    Campana     @relation(fields: [campanaId], references: [id], onDelete: Cascade)
+
+  @@index([campanaId, estado])
+  @@map("campana_envios")
 }

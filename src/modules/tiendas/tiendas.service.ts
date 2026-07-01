@@ -23,6 +23,9 @@ import {
 import { uploadImageToCloudinary } from "@/utils/cloudinary";
 import { cacheService } from "../../utils/cache";
 import { logger } from "../../utils/logger";
+import { cifrar, descifrar } from "../../utils/cifrado";
+import { GuardarConfigEmailDto } from "./tiendas.dto";
+import nodemailer from "nodemailer";
 
 export class TiendasService {
   private repository: TiendasRepository;
@@ -246,6 +249,152 @@ export class TiendasService {
         : null,
       instruccionApuntado: tienda.dominioPersonalizado ? this.instruccionApuntado() : null,
     };
+  }
+
+  // ─────────────────────────────────────────────
+  // CONFIG DE EMAIL MARKETING (proveedor propio del dueño)
+  // ─────────────────────────────────────────────
+
+  // Defaults de host/puerto según proveedor, para que el dueño no tenga que saberlos.
+  private datosSmtpPorProveedor(
+    proveedor: GuardarConfigEmailDto["proveedor"],
+    host?: string,
+    port?: number
+  ): { host: string | null; port: number | null } {
+    if (proveedor === "gmail") {
+      return { host: host ?? "smtp.gmail.com", port: port ?? 587 };
+    }
+    if (proveedor === "smtp") {
+      return { host: host ?? null, port: port ?? 587 };
+    }
+    // brevo se maneja por API, no por SMTP.
+    return { host: null, port: null };
+  }
+
+  // Guarda la configuración del proveedor de email del dueño. La credencial se
+  // cifra antes de persistir. Cambiar la config marca emailVerificadoConfig=false
+  // hasta que se pruebe la conexión con verificarConfigEmail.
+  async guardarConfigEmail(usuarioId: number, datos: GuardarConfigEmailDto) {
+    const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
+    if (!tienda) {
+      throw new ErrorApi("No tenés ninguna tienda creada", 404);
+    }
+
+    // La credencial es opcional al editar: si no se manda, conservamos la guardada.
+    // Pero si nunca hubo credencial, es obligatoria.
+    if (!datos.credencial && !tienda.emailCredencial) {
+      throw new ErrorApi(
+        datos.proveedor === "brevo"
+          ? "Ingresá tu API key de Brevo"
+          : "Ingresá la contraseña / app password del email",
+        400
+      );
+    }
+
+    const { host, port } = this.datosSmtpPorProveedor(datos.proveedor, datos.host, datos.port);
+
+    await this.repository.actualizar(tienda.id, {
+      emailProveedor: datos.proveedor,
+      emailRemitente: datos.remitente,
+      emailRemitenteNombre: datos.remitenteNombre ?? null,
+      emailHost: host,
+      emailPort: port,
+      // En SMTP/Gmail el usuario suele ser el mismo email; si no lo mandan, usamos el remitente.
+      emailUsuario: datos.proveedor === "brevo" ? null : datos.usuario ?? datos.remitente,
+      // Solo re-ciframos si llegó una credencial nueva; si no, dejamos la existente.
+      ...(datos.credencial ? { emailCredencial: cifrar(datos.credencial) } : {}),
+      // Cualquier cambio de config invalida la verificación previa.
+      emailVerificadoConfig: false,
+    });
+
+    return this.obtenerConfigEmail(usuarioId);
+  }
+
+  // Estado de la config para el panel. NUNCA expone la credencial: solo si hay
+  // una cargada (para que el front muestre "••••" y no la pida de nuevo).
+  async obtenerConfigEmail(usuarioId: number) {
+    const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
+    if (!tienda) {
+      throw new ErrorApi("No tenés ninguna tienda creada", 404);
+    }
+    return {
+      proveedor: tienda.emailProveedor ?? null,
+      remitente: tienda.emailRemitente ?? null,
+      remitenteNombre: tienda.emailRemitenteNombre ?? null,
+      host: tienda.emailHost ?? null,
+      port: tienda.emailPort ?? null,
+      usuario: tienda.emailUsuario ?? null,
+      tieneCredencial: !!tienda.emailCredencial,
+      verificado: tienda.emailVerificadoConfig,
+      // El dueño no puede mandar campañas hasta tener config verificada.
+      listoParaEnviar: !!tienda.emailProveedor && tienda.emailVerificadoConfig,
+    };
+  }
+
+  // Prueba REAL que las credenciales funcionan. Para SMTP/Gmail abre la conexión
+  // con nodemailer y hace verify(); para Brevo pega a su API de cuenta.
+  // Si todo va bien, marca emailVerificadoConfig=true.
+  async verificarConfigEmail(usuarioId: number) {
+    const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
+    if (!tienda) {
+      throw new ErrorApi("No tenés ninguna tienda creada", 404);
+    }
+    if (!tienda.emailProveedor || !tienda.emailCredencial) {
+      throw new ErrorApi("Primero configurá tu proveedor de email", 400);
+    }
+
+    const credencial = descifrar(tienda.emailCredencial);
+
+    if (tienda.emailProveedor === "brevo") {
+      await this.verificarBrevo(credencial);
+    } else {
+      await this.verificarSmtp(tienda, credencial);
+    }
+
+    await this.repository.actualizar(tienda.id, { emailVerificadoConfig: true });
+    return { verificado: true, mensaje: "Conexión con tu proveedor de email verificada correctamente" };
+  }
+
+  // Verifica la API key de Brevo consultando su endpoint de cuenta.
+  private async verificarBrevo(apiKey: string) {
+    let res: Response;
+    try {
+      res = await fetch("https://api.brevo.com/v3/account", {
+        headers: { "api-key": apiKey, accept: "application/json" },
+      });
+    } catch (err) {
+      logger.warn("[EMAIL-CONFIG] Error de red verificando Brevo:", err);
+      throw new ErrorApi("No pudimos conectar con Brevo. Intentá de nuevo en un momento.", 502);
+    }
+    if (res.status === 401) {
+      throw new ErrorApi("La API key de Brevo es inválida. Revisá que la copiaste completa.", 422);
+    }
+    if (!res.ok) {
+      throw new ErrorApi("Brevo rechazó la conexión. Verificá tu API key.", 422);
+    }
+  }
+
+  // Verifica conexión SMTP (Gmail u otro) abriendo el transport y haciendo verify().
+  private async verificarSmtp(tienda: any, password: string) {
+    if (!tienda.emailHost) {
+      throw new ErrorApi("Falta el host SMTP en la configuración", 400);
+    }
+    const transporter = nodemailer.createTransport({
+      host: tienda.emailHost,
+      port: tienda.emailPort ?? 587,
+      secure: (tienda.emailPort ?? 587) === 465,
+      auth: { user: tienda.emailUsuario ?? tienda.emailRemitente, pass: password },
+    });
+    try {
+      await transporter.verify();
+    } catch (err) {
+      logger.warn(`[EMAIL-CONFIG] Falló verify SMTP de tienda ${tienda.id}:`, err);
+      throw new ErrorApi(
+        "No pudimos conectar con tu servidor de email. Revisá el host, el usuario y la contraseña " +
+          "(en Gmail tenés que usar una 'contraseña de aplicación', no la de tu cuenta).",
+        422
+      );
+    }
   }
 
   /**

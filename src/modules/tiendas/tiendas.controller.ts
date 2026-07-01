@@ -14,6 +14,7 @@ import {
   ActualizarAboutUsDto,
   ActualizarMarqueeDto,
   CambiarSlugDto,
+  GuardarConfigEmailDto,
 } from './tiendas.dto';
 import { TiendasService } from './tiendas.service';
 
@@ -89,6 +90,41 @@ export class TiendasController {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const resultado = await this.service.obtenerEstadoDominio(usuarioId);
       responderOk(res, resultado, 'Estado del dominio obtenido');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ── Config de email marketing (proveedor propio del dueño) ──
+
+  //controlador para guardar/actualizar la config del proveedor de email del dueño
+  guardarConfigEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.guardarConfigEmail(usuarioId, req.body as GuardarConfigEmailDto);
+      responderOk(res, resultado, 'Configuración de email guardada. Verificá la conexión para empezar a enviar.');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para obtener el estado de la config de email (para el panel)
+  obtenerConfigEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.obtenerConfigEmail(usuarioId);
+      responderOk(res, resultado, 'Configuración de email obtenida');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para verificar la conexión con el proveedor de email del dueño
+  verificarConfigEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.verificarConfigEmail(usuarioId);
+      responderOk(res, resultado, 'Conexión de email verificada');
     } catch (error) {
       next(error);
     }

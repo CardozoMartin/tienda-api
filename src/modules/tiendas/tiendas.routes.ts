@@ -19,6 +19,7 @@ import {
   CambiarSlugSchema,
   ActualizarImagenCarruselSchema,
   GuardarDominioSchema,
+  GuardarConfigEmailSchema,
 } from './tiendas.dto';
 import { uploadMultiple, uploadSingle } from '../../config/multer.config';
 
@@ -94,6 +95,11 @@ router.delete('/mi-tienda/carrusel/:imagenId', ...soloOwner, controller.eliminar
 // Logo
 router.post('/mi-tienda/logo', ...soloOwner, uploadSingle, controller.subirLogo);
 router.delete('/mi-tienda/logo', ...soloOwner, controller.eliminarLogo);
+
+// Config de email marketing (proveedor propio del dueño)
+router.get('/mi-tienda/email-config', ...soloOwner, controller.obtenerConfigEmail);
+router.put('/mi-tienda/email-config', ...soloOwner, validar(GuardarConfigEmailSchema), controller.guardarConfigEmail);
+router.post('/mi-tienda/email-config/verificar', ...soloOwner, controller.verificarConfigEmail);
 
 // Dominio propio
 router.get('/mi-tienda/dominio', ...soloOwner, controller.obtenerEstadoDominio);
