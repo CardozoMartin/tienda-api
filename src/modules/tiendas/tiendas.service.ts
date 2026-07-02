@@ -15,6 +15,8 @@ import {
   ActualizarMetodoEntregaDto,
   AgregarImagenCarruselDto,
   ActualizarImagenCarruselDto,
+  AgregarCategoriaDestacadaDto,
+  ActualizarCategoriaDestacadaDto,
   FiltrosTiendasDto,
   ActualizarAboutUsDto,
   ActualizarMarqueeDto,
@@ -614,6 +616,67 @@ export class TiendasService {
   ) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.repository.reordenarCarrusel(tienda.id, orden);
+    this.invalidarCacheTienda(tienda.slug);
+  }
+
+  // Categorías destacadas
+
+  async listarCategoriasDestacadas(usuarioId: number) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    return this.repository.listarCategoriasDestacadas(tienda.id);
+  }
+
+  async agregarCategoriaDestacada(
+    usuarioId: number,
+    datos: AgregarCategoriaDestacadaDto,
+    file?: Express.Multer.File
+  ) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    let imagenUrl = datos.imagenUrl;
+    if (file) {
+      imagenUrl = await uploadImageToCloudinary(file.buffer);
+    }
+    if (!imagenUrl) {
+      throw new ErrorApi('La imagen es requerida', 400);
+    }
+    const resultado = await this.repository.agregarCategoriaDestacada(tienda.id, {
+      imagenUrl,
+      titulo: datos.titulo,
+      linkUrl: datos.linkUrl,
+      orden: datos.orden,
+    });
+    this.invalidarCacheTienda(tienda.slug);
+    return resultado;
+  }
+
+  async actualizarCategoriaDestacada(
+    usuarioId: number,
+    id: number,
+    datos: ActualizarCategoriaDestacadaDto,
+    file?: Express.Multer.File
+  ) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const patch = { ...datos };
+    if (file) {
+      patch.imagenUrl = await uploadImageToCloudinary(file.buffer);
+    }
+    await this.repository.actualizarCategoriaDestacada(id, tienda.id, patch);
+    this.invalidarCacheTienda(tienda.slug);
+    return this.repository.listarCategoriasDestacadas(tienda.id);
+  }
+
+  async eliminarCategoriaDestacada(usuarioId: number, id: number) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    await this.repository.eliminarCategoriaDestacada(id, tienda.id);
+    this.invalidarCacheTienda(tienda.slug);
+  }
+
+  async reordenarCategoriasDestacadas(
+    usuarioId: number,
+    orden: Array<{ id: number; orden: number }>
+  ) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    await this.repository.reordenarCategoriasDestacadas(tienda.id, orden);
     this.invalidarCacheTienda(tienda.slug);
   }
 

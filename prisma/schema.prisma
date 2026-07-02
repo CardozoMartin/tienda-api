@@ -82,6 +82,7 @@ model Tienda {
   actualizadoEn  DateTime              @updatedAt
   carritos       Carrito[]
   carrusel       CarruselImagen[]
+  categoriasDestacadas CategoriaDestacada[]
   clientes       ClienteTienda[]
   metodosEntrega MetodoEntregaTienda[]
   metodosPago    MetodoPagoTienda[]
@@ -122,6 +123,7 @@ model TiendaTemaConfig {
   navbarStyle       NavbarStyle      @default(TRANSPARENT)
   navbarVariante    NavbarVariante   @default(CLASICO)
   footerVariante    FooterVariante   @default(CENTRADO)
+  fuenteKit         FuenteKit        @default(MODERNO)
   heroTitulo        String?          @db.VarChar(200)
   heroSubtitulo     String?          @db.VarChar(300)
   heroCtaTexto      String?          @db.VarChar(100)
@@ -136,6 +138,8 @@ model TiendaTemaConfig {
   bannerPromoImagenUrl String?          @db.VarChar(500)
   bannerPromoLinkUrl   String?          @db.VarChar(500)
   bannerPromoCtaTexto  String?          @db.VarChar(100)
+  categoriasDestacadasActivas  Boolean                 @default(false)
+  categoriasDestacadasPosicion PosicionCategoriasDest  @default(ANTES)
   creadoEn             DateTime         @default(now())
   actualizadoEn     DateTime         @updatedAt
   modoOscuro        Boolean          @default(true)
@@ -241,6 +245,21 @@ model CarruselImagen {
 
   @@index([tiendaId])
   @@map("carrusel_imagenes")
+}
+
+model CategoriaDestacada {
+  id        Int      @id @default(autoincrement())
+  tiendaId  Int
+  imagenUrl String   @db.VarChar(500)
+  titulo    String   @db.VarChar(200)
+  linkUrl   String   @db.VarChar(500)
+  orden     Int      @default(0)
+  activa    Boolean  @default(true)
+  creadoEn  DateTime @default(now())
+  tienda    Tienda   @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@index([tiendaId])
+  @@map("categorias_destacadas")
 }
 
 model Categoria {
@@ -597,6 +616,18 @@ enum NavbarVariante {
 enum FooterVariante {
   CENTRADO
   COLUMNAS
+}
+
+enum PosicionCategoriasDest {
+  ANTES
+  DESPUES
+}
+
+enum FuenteKit {
+  MODERNO
+  EDITORIAL
+  IMPACTO
+  MINIMAL
 }
 
 enum EstadoPedido {

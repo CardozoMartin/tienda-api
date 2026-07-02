@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `tienda_tema_config` ADD COLUMN `fuenteKit` ENUM('MODERNO', 'EDITORIAL', 'IMPACTO', 'MINIMAL') NOT NULL DEFAULT 'MODERNO';

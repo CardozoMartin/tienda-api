@@ -7,6 +7,8 @@ import {
   ActualizarTiendaDto,
   AgregarImagenCarruselDto,
   ActualizarImagenCarruselDto,
+  AgregarCategoriaDestacadaDto,
+  ActualizarCategoriaDestacadaDto,
   AgregarMetodoEntregaDto,
   AgregarMetodoPagoDto,
   CrearTiendaDto,
@@ -352,6 +354,77 @@ export class TiendasController {
       const orden = req.body as Array<{ id: number; orden: number }>;
       await this.service.reordenarCarrusel(usuarioId, orden);
       responderOk(res, null, 'Orden del carrusel actualizado');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ── Categorías destacadas ──
+
+  /** GET /tiendas/mi-tienda/categorias-destacadas */
+  listarCategoriasDestacadas = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const categorias = await this.service.listarCategoriasDestacadas(usuarioId);
+      responderOk(res, categorias, 'Categorías destacadas obtenidas');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** POST /tiendas/mi-tienda/categorias-destacadas (form-data con imagen o imagenUrl en body) */
+  agregarCategoriaDestacada = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const file = req.file as Express.Multer.File | undefined;
+      const categoria = await this.service.agregarCategoriaDestacada(
+        usuarioId,
+        req.body as AgregarCategoriaDestacadaDto,
+        file
+      );
+      responderOk(res, categoria, 'Categoría destacada agregada', 201);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** PUT /tiendas/mi-tienda/categorias-destacadas/:categoriaId */
+  actualizarCategoriaDestacada = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const id = parseInt(req.params['categoriaId'] as string, 10);
+      const file = req.file as Express.Multer.File | undefined;
+      const categorias = await this.service.actualizarCategoriaDestacada(
+        usuarioId,
+        id,
+        req.body as ActualizarCategoriaDestacadaDto,
+        file
+      );
+      responderOk(res, categorias, 'Categoría destacada actualizada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** DELETE /tiendas/mi-tienda/categorias-destacadas/:categoriaId */
+  eliminarCategoriaDestacada = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const id = parseInt(req.params['categoriaId'] as string, 10);
+      await this.service.eliminarCategoriaDestacada(usuarioId, id);
+      responderOk(res, null, 'Categoría destacada eliminada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** PUT /tiendas/mi-tienda/categorias-destacadas/reordenar */
+  reordenarCategoriasDestacadas = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const { orden } = req.body as { orden: Array<{ id: number; orden: number }> };
+      await this.service.reordenarCategoriasDestacadas(usuarioId, orden);
+      responderOk(res, null, 'Orden de categorías destacadas actualizado');
     } catch (error) {
       next(error);
     }

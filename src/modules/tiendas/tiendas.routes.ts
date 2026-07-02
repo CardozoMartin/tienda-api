@@ -18,6 +18,8 @@ import {
   ActualizarMarqueeSchema,
   CambiarSlugSchema,
   ActualizarImagenCarruselSchema,
+  AgregarCategoriaDestacadaSchema,
+  ActualizarCategoriaDestacadaSchema,
   GuardarDominioSchema,
   GuardarConfigEmailSchema,
 } from './tiendas.dto';
@@ -91,6 +93,27 @@ router.put(
   controller.actualizarImagenCarrusel
 );
 router.delete('/mi-tienda/carrusel/:imagenId', ...soloOwner, controller.eliminarImagenCarrusel);
+
+// Categorías destacadas (imagen + título + link)
+router.get('/mi-tienda/categorias-destacadas', ...soloOwner, controller.listarCategoriasDestacadas);
+router.post(
+  '/mi-tienda/categorias-destacadas',
+  ...soloOwner, uploadSingle,
+  validar(AgregarCategoriaDestacadaSchema),
+  controller.agregarCategoriaDestacada
+);
+router.put(
+  '/mi-tienda/categorias-destacadas/reordenar',
+  ...soloOwner,
+  controller.reordenarCategoriasDestacadas
+);
+router.put(
+  '/mi-tienda/categorias-destacadas/:categoriaId',
+  ...soloOwner, uploadSingle,
+  validar(ActualizarCategoriaDestacadaSchema),
+  controller.actualizarCategoriaDestacada
+);
+router.delete('/mi-tienda/categorias-destacadas/:categoriaId', ...soloOwner, controller.eliminarCategoriaDestacada);
 
 // Logo
 router.post('/mi-tienda/logo', ...soloOwner, uploadSingle, controller.subirLogo);

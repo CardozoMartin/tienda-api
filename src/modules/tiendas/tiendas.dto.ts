@@ -74,6 +74,7 @@ export const ActualizarTemaSchema = z.object({
   navbarStyle: z.string().optional(),
   navbarVariante: z.enum(['CLASICO', 'PILL']).optional(),
   footerVariante: z.enum(['CENTRADO', 'COLUMNAS']).optional(),
+  fuenteKit: z.enum(['MODERNO', 'EDITORIAL', 'IMPACTO', 'MINIMAL']).optional(),
   heroTitulo: z.string().max(200).optional(),
   heroSubtitulo: z.string().max(300).optional(),
   heroCtaTexto: z.string().max(100).optional(),
@@ -89,6 +90,9 @@ export const ActualizarTemaSchema = z.object({
   bannerPromoImagenUrl: z.string().max(500).optional().nullable(),
   bannerPromoLinkUrl: z.string().max(500).optional().nullable(),
   bannerPromoCtaTexto: z.string().max(100).optional().nullable(),
+  // Categorías destacadas (grid de tarjetas imagen+título+link)
+  categoriasDestacadasActivas: z.boolean().optional(),
+  categoriasDestacadasPosicion: z.enum(['ANTES', 'DESPUES']).optional(),
 });
 
 export type ActualizarTemaDto = z.infer<typeof ActualizarTemaSchema>;
@@ -172,6 +176,38 @@ export const ActualizarImagenCarruselSchema = z.object({
 });
 
 export type ActualizarImagenCarruselDto = z.infer<typeof ActualizarImagenCarruselSchema>;
+
+//Categorías destacadas (imagen + título + link)
+export const AgregarCategoriaDestacadaSchema = z.object({
+  imagenUrl: z.string().max(500).optional(),
+  titulo: z.string().min(1, 'El título es requerido').max(200).trim(),
+  linkUrl: z.string().min(1, 'El link es requerido').max(500).trim(),
+  orden: z.coerce.number().int().min(0).default(0),
+});
+
+export type AgregarCategoriaDestacadaDto = z.infer<typeof AgregarCategoriaDestacadaSchema>;
+
+export const ActualizarCategoriaDestacadaSchema = z.object({
+  imagenUrl: z.string().max(500).optional(),
+  titulo: z.string().min(1).max(200).trim().optional(),
+  linkUrl: z.string().min(1).max(500).trim().optional(),
+  // Llega por multipart (string) o JSON (boolean); coaccionamos a boolean.
+  activa: z.preprocess(
+    (v) => (typeof v === 'string' ? v === 'true' : v),
+    z.boolean().optional()
+  ),
+});
+
+export type ActualizarCategoriaDestacadaDto = z.infer<typeof ActualizarCategoriaDestacadaSchema>;
+
+export const ReordenarCategoriasDestacadasSchema = z.object({
+  orden: z.array(z.object({
+    id: z.number().int().positive(),
+    orden: z.number().int().min(0),
+  })),
+});
+
+export type ReordenarCategoriasDestacadasDto = z.infer<typeof ReordenarCategoriasDestacadasSchema>;
 
 //Filtros para listar tiendas en el endpoint público, con paginación, búsqueda por nombre y ubicación, y ordenamiento
 export const FiltrosTiendasSchema = z.object({
