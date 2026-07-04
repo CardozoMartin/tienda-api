@@ -66,6 +66,10 @@ model Tienda {
   pais           String?               @db.VarChar(80)
   provincia      String?               @db.VarChar(80)
   ciudad         String?               @db.VarChar(80)
+  // Datos legales del vendedor (identificación del proveedor en e-commerce)
+  razonSocial    String?               @db.VarChar(200)
+  cuit           String?               @db.VarChar(20)
+  domicilioLegal String?               @db.VarChar(300)
   // Configuración de email marketing (cada tienda usa su propio proveedor / credenciales).
   emailProveedor   String?             @db.VarChar(30)  // "smtp" | "brevo" | ...
   emailRemitente   String?             @db.VarChar(180) // desde qué dirección se envía
@@ -95,6 +99,9 @@ model Tienda {
   visitas_log    VisitaTienda[]
   cupones        Cupon[]
   campanas       Campana[]
+  guiasTalles    GuiaTalles[]
+  revocaciones   SolicitudRevocacion[]
+  paginasLegales PaginaLegal[]
   temaConfig     TiendaTemaConfig?
   plantilla      PlantillaTienda?      @relation(fields: [plantillaId], references: [id])
   usuario        Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
@@ -306,14 +313,36 @@ model Producto {
   pedidoItems        PedidoItem[]
   imagenes           ProductoImagen[]
   variantes          ProductoVariante[]
+  guiaTallesId       Int?
   categoria          Categoria?         @relation(fields: [categoriaId], references: [id])
   tienda             Tienda             @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  guiaTalles         GuiaTalles?        @relation(fields: [guiaTallesId], references: [id], onDelete: SetNull)
   resenas            ResenaProducto[]
   tags               Tag[]              @relation("productototag")
 
   @@index([tiendaId])
   @@index([categoriaId])
+  @@index([guiaTallesId])
   @@map("productos")
+}
+
+// Tabla de talles reusable a nivel tienda (ej: "Remeras", "Calzado").
+// columnas: ["Talle", "Pecho", "Largo"] (encabezados)
+// filas: [["S","48","68"], ["M","51","70"]] (cada fila alineada a columnas)
+model GuiaTalles {
+  id            Int        @id @default(autoincrement())
+  tiendaId      Int
+  nombre        String     @db.VarChar(120)
+  columnas      Json
+  filas         Json
+  nota          String?    @db.VarChar(500)
+  creadoEn      DateTime   @default(now())
+  actualizadoEn DateTime   @updatedAt
+  tienda        Tienda     @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  productos     Producto[]
+
+  @@index([tiendaId])
+  @@map("guias_talles")
 }
 
 model ProductoImagen {
@@ -331,6 +360,8 @@ model ProductoVariante {
   id           Int           @id @default(autoincrement())
   productoId   Int
   nombre       String        @db.VarChar(150)
+  color        String?       @db.VarChar(80)
+  talle        String?       @db.VarChar(80)
   sku          String?       @db.VarChar(100)
   precioExtra  Decimal       @default(0.00) @db.Decimal(10, 2)
   imagenUrl    String?       @db.VarChar(500)
@@ -516,6 +547,7 @@ model Pedido {
   actualizadoEn     DateTime       @updatedAt
   items             PedidoItem[]
   logs              LogPedido[]
+  revocaciones      SolicitudRevocacion[]
   cliente           ClienteTienda? @relation(fields: [clienteId], references: [id])
   metodoEntrega     MetodoEntrega  @relation(fields: [metodoEntregaId], references: [id])
   metodoPago        MetodoPago     @relation(fields: [metodoPagoId], references: [id])
@@ -556,6 +588,61 @@ model Cupon {
   @@unique([tiendaId, codigo])
   @@index([tiendaId])
   @@map("cupones")
+}
+
+// Solicitud de revocación de compra (Botón de arrepentimiento — Res. 424/2020, art. 34 LDC).
+// Se puede crear sin registro previo. Al crearse genera un código de constancia inmediato.
+model SolicitudRevocacion {
+  id             Int                @id @default(autoincrement())
+  tiendaId       Int
+  codigo         String             @unique @db.VarChar(20) // constancia, ej: ARR-3F7K9Q
+  pedidoId       Int?               // opcional: puede no recordar el nº
+  nroPedidoTexto String?            @db.VarChar(50)  // nº que el cliente escribió a mano
+  nombre         String             @db.VarChar(150)
+  email          String             @db.VarChar(180)
+  telefono       String?            @db.VarChar(30)
+  motivo         String?            @db.Text
+  estado         EstadoRevocacion   @default(PENDIENTE)
+  respuestaOwner String?            @db.Text
+  creadoEn       DateTime           @default(now())
+  actualizadoEn  DateTime           @updatedAt
+  tienda         Tienda             @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  pedido         Pedido?            @relation(fields: [pedidoId], references: [id])
+
+  @@index([tiendaId])
+  @@index([pedidoId], map: "solicitudes_revocacion_pedidoId_fkey")
+  @@map("solicitudes_revocacion")
+}
+
+enum EstadoRevocacion {
+  PENDIENTE
+  EN_PROCESO
+  RESUELTA
+  RECHAZADA
+}
+
+// Páginas legales editables por tienda (T&C, privacidad, cambios y devoluciones).
+// Una fila por (tienda, tipo). El contenido es texto plano con saltos de línea.
+model PaginaLegal {
+  id            Int            @id @default(autoincrement())
+  tiendaId      Int
+  tipo          TipoPaginaLegal
+  titulo        String         @db.VarChar(150)
+  contenido     String         @db.LongText
+  activa        Boolean        @default(true)
+  creadoEn      DateTime       @default(now())
+  actualizadoEn DateTime       @updatedAt
+  tienda        Tienda         @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@unique([tiendaId, tipo])
+  @@index([tiendaId])
+  @@map("paginas_legales")
+}
+
+enum TipoPaginaLegal {
+  TERMINOS
+  PRIVACIDAD
+  CAMBIOS
 }
 
 model PedidoItem {

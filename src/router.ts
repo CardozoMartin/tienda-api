@@ -16,6 +16,9 @@ import pagosRouter, { webhookRouter, mpDashboardRouter } from './modules/pagos/p
 import analyticsRouter from './modules/analytics/analytics.routes';
 import { cuponesOwnerRouter, cuponesPublicoRouter } from './modules/cupones/cupones.routes';
 import campanasRouter from './modules/campanas/campanas.routes';
+import { guiasTallesRouter } from './modules/guias-talles/guias-talles.routes';
+import { revocacionesOwnerRouter, revocacionesPublicoRouter } from './modules/revocaciones/revocaciones.routes';
+import { legalOwnerRouter, legalPublicoRouter } from './modules/legal/legal.routes';
 
 const router = Router();
 
@@ -33,6 +36,11 @@ router.use('/cupones', cuponesOwnerRouter);
 router.use('/tiendas/:tiendaId/cupones', cuponesPublicoRouter);
 router.use('/carrito', carritoRouter);
 router.use('/campanas', campanasRouter);
+router.use('/guias-talles', guiasTallesRouter);
+router.use('/tiendas/:tiendaId/revocaciones', revocacionesPublicoRouter);
+router.use('/revocaciones', revocacionesOwnerRouter);
+router.use('/legal', legalOwnerRouter);
+router.use('/tiendas/:tiendaId/legal', legalPublicoRouter);
 router.use('/tiendas/:tiendaId/pedidos', pedidosRouter);
 router.use('/tiendas/:tiendaId/pedidos/:pedidoId', pagosRouter);
 router.use('/pedidos', pedidosRouter);

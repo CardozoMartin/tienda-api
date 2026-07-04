@@ -47,6 +47,10 @@ export type CrearTiendaDto = z.infer<typeof CrearTiendaSchema>;
 export const ActualizarTiendaSchema = CrearTiendaSchema.partial().extend({
   activa: z.boolean().optional(),
   publica: z.boolean().optional(),
+  // Datos legales del vendedor
+  razonSocial: z.string().max(200).trim().optional().or(z.literal('')),
+  cuit: z.string().max(20).trim().optional().or(z.literal('')),
+  domicilioLegal: z.string().max(300).trim().optional().or(z.literal('')),
 });
 
 export type ActualizarTiendaDto = z.infer<typeof ActualizarTiendaSchema>;

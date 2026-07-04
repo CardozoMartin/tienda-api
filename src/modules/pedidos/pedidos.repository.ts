@@ -23,6 +23,12 @@ export class PedidosRepository {
             where: { id: item.varianteId },
             data: { stock: { decrement: item.cantidad } }
           });
+
+          // El stock del producto es la suma de sus variantes: lo mantenemos sincronizado
+          await tx.producto.update({
+            where: { id: item.productoId },
+            data: { stock: { decrement: item.cantidad } }
+          });
         } else {
           const prodExistente = await tx.producto.findUnique({
             where: { id: item.productoId },
@@ -170,6 +176,11 @@ export class PedidosRepository {
           if (item.varianteId) {
             await tx.productoVariante.update({
               where: { id: item.varianteId },
+              data: { stock: { increment: item.cantidad } }
+            });
+            // Mantener el stock del producto padre sincronizado con sus variantes
+            await tx.producto.update({
+              where: { id: item.productoId },
               data: { stock: { increment: item.cantidad } }
             });
           } else {

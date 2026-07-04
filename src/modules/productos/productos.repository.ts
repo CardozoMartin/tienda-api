@@ -8,6 +8,7 @@ const INCLUDE_PRODUCTO = {
   categoria: true,
   imagenes: { orderBy: { orden: 'asc' as const } },
   variantes: true,
+  guiaTalles: true,
   tags: true,
   _count: { select: { resenas: true } },
 } as const;
@@ -112,9 +113,12 @@ export class ProductosRepository {
     categoriaId?: number;
     disponible: boolean;
     destacado: boolean;
+    guiaTallesId?: number | null;
     tags: string[];
     variantes: Array<{
       nombre: string;
+      color?: string;
+      talle?: string;
       sku?: string;
       precioExtra: number;
       imagenUrl?: string;
@@ -197,6 +201,8 @@ export class ProductosRepository {
     productoId: number,
     datos: {
       nombre: string;
+      color?: string;
+      talle?: string;
       sku?: string;
       precioExtra: number;
       imagenUrl?: string;
@@ -216,6 +222,35 @@ export class ProductosRepository {
 
   async eliminarVariante(varianteId: number, productoId: number): Promise<void> {
     await prisma.productoVariante.deleteMany({ where: { id: varianteId, productoId } });
+  }
+
+  // Reemplaza TODAS las variantes de un producto por las nuevas (usado en import Excel).
+  // Recalcula el stock del producto como la suma del stock de las variantes.
+  async reemplazarVariantes(
+    productoId: number,
+    variantes: Array<{
+      nombre: string;
+      color?: string;
+      talle?: string;
+      sku?: string;
+      precioExtra: number;
+      stock: number;
+      disponible: boolean;
+    }>
+  ): Promise<void> {
+    await prisma.$transaction(async (tx: any) => {
+      await tx.productoVariante.deleteMany({ where: { productoId } });
+      if (variantes.length > 0) {
+        await tx.productoVariante.createMany({
+          data: variantes.map((v) => ({ productoId, ...v })),
+        });
+      }
+      const stockTotal = variantes.reduce((acc, v) => acc + (v.stock || 0), 0);
+      // Si no hay variantes, no tocamos el stock manual del producto
+      if (variantes.length > 0) {
+        await tx.producto.update({ where: { id: productoId }, data: { stock: stockTotal } });
+      }
+    });
   }
 
   async buscarVariantePorSku(sku: string, tiendaId: number, excluirVarianteId?: number) {

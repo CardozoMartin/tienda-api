@@ -460,6 +460,11 @@ export class TiendasService {
     // Si se quiere cambiar el nombre, regeneramos el slug
     let datosActualizacion: typeof datos & { slug?: string } = { ...datos };
 
+    // Datos legales: string vacío → null para poder limpiarlos
+    for (const campo of ['razonSocial', 'cuit', 'domicilioLegal'] as const) {
+      if ((datosActualizacion as any)[campo] === '') (datosActualizacion as any)[campo] = null;
+    }
+
     if (datos.nombre && datos.nombre !== tienda.nombre) {
       let nuevoSlug = generarSlug(datos.nombre);
       const slugOcupado = await this.repository.existeSlug(nuevoSlug, tienda.id);
