@@ -123,6 +123,7 @@ export class TiendasRepository {
     nombre: string;
     titulo?: string;
     descripcion?: string;
+    rubro?: string;
     whatsapp?: string;
     instagram?: string;
     facebook?: string;

@@ -19,6 +19,7 @@ import {
   GuardarConfigEmailDto,
 } from './tiendas.dto';
 import { TiendasService } from './tiendas.service';
+import { RUBROS } from '../../config/categorias.seed';
 
 export class TiendasController {
   private service: TiendasService;
@@ -188,6 +189,15 @@ export class TiendasController {
   };
 
   // ── Catálogo de métodos ──
+
+  // Catálogo de rubros de negocio (para el onboarding: "¿Qué vendés?").
+  listarRubros = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      responderOk(res, RUBROS, 'Rubros obtenidos');
+    } catch (error) {
+      next(error);
+    }
+  };
 
   listarMetodosPago = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
