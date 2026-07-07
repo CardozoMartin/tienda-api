@@ -11,6 +11,8 @@ const VarianteSchema = z.object({
     .min(1)
     .max(150)
     .trim(),
+  color: z.string().max(80).trim().optional().or(z.literal('').transform(() => undefined)),
+  talle: z.string().max(80).trim().optional().or(z.literal('').transform(() => undefined)),
   sku: z.string().max(100).trim().optional(),
   // precioExtra puede ser 0 (sin costo adicional) o positivo
   precioExtra: z.coerce.number().min(0).default(0),
@@ -54,6 +56,9 @@ const ProductoBaseSchema = z.object({
   imagenPrincipalUrl: z.string().url('URL de imagen inválida').optional().or(z.literal('')),
 
   categoriaId: z.coerce.number().int().positive().optional(),
+
+  // Guía de talles a mostrar en la tienda (opcional). '' o null = sin guía.
+  guiaTallesId: z.coerce.number().int().positive().optional().or(z.literal('')).or(z.null()),
 
   disponible: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(true)),
   destacado: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(false)),

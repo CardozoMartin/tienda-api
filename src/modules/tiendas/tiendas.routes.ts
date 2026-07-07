@@ -18,7 +18,10 @@ import {
   ActualizarMarqueeSchema,
   CambiarSlugSchema,
   ActualizarImagenCarruselSchema,
+  AgregarCategoriaDestacadaSchema,
+  ActualizarCategoriaDestacadaSchema,
   GuardarDominioSchema,
+  GuardarConfigEmailSchema,
 } from './tiendas.dto';
 import { uploadMultiple, uploadSingle } from '../../config/multer.config';
 
@@ -32,6 +35,9 @@ const controller = new TiendasController();
 
 // Directorio de tiendas
 router.get('/', validar(FiltrosTiendasSchema, 'query'), controller.listar);
+
+// Catálogo de rubros de negocio (para el onboarding). Path fijo → antes de /:slug.
+router.get('/rubros', controller.listarRubros);
 
 // Catálogo de métodos (Público/Owner)
 router.get('/metodos-pago', controller.listarMetodosPago);
@@ -91,9 +97,36 @@ router.put(
 );
 router.delete('/mi-tienda/carrusel/:imagenId', ...soloOwner, controller.eliminarImagenCarrusel);
 
+// Categorías destacadas (imagen + título + link)
+router.get('/mi-tienda/categorias-destacadas', ...soloOwner, controller.listarCategoriasDestacadas);
+router.post(
+  '/mi-tienda/categorias-destacadas',
+  ...soloOwner, uploadSingle,
+  validar(AgregarCategoriaDestacadaSchema),
+  controller.agregarCategoriaDestacada
+);
+router.put(
+  '/mi-tienda/categorias-destacadas/reordenar',
+  ...soloOwner,
+  controller.reordenarCategoriasDestacadas
+);
+router.put(
+  '/mi-tienda/categorias-destacadas/:categoriaId',
+  ...soloOwner, uploadSingle,
+  validar(ActualizarCategoriaDestacadaSchema),
+  controller.actualizarCategoriaDestacada
+);
+router.delete('/mi-tienda/categorias-destacadas/:categoriaId', ...soloOwner, controller.eliminarCategoriaDestacada);
+
 // Logo
 router.post('/mi-tienda/logo', ...soloOwner, uploadSingle, controller.subirLogo);
 router.delete('/mi-tienda/logo', ...soloOwner, controller.eliminarLogo);
+
+// Config de email marketing (proveedor propio del dueño)
+router.get('/mi-tienda/email-config', ...soloOwner, controller.obtenerConfigEmail);
+router.put('/mi-tienda/email-config', ...soloOwner, validar(GuardarConfigEmailSchema), controller.guardarConfigEmail);
+router.post('/mi-tienda/email-config/verificar', ...soloOwner, controller.verificarConfigEmail);
+router.delete('/mi-tienda/email-config', ...soloOwner, controller.eliminarConfigEmail);
 
 // Dominio propio
 router.get('/mi-tienda/dominio', ...soloOwner, controller.obtenerEstadoDominio);

@@ -8,6 +8,17 @@ const colorHex = z
   .regex(/^#[0-9A-Fa-f]{6}$/, 'El color debe ser un hexadecimal válido (#RRGGBB)')
   .optional();
 
+// Validador de link de destino: acepta URL absoluta (https://...) o ruta interna
+// de la tienda que empiece con "/" (ej: /categoria/5, /producto/10). Vacío => sin link.
+const linkDestino = z
+  .string()
+  .max(500)
+  .refine(
+    (v) => v === '' || /^https?:\/\//i.test(v) || v.startsWith('/'),
+    'El link debe ser una URL (https://...) o una ruta interna que empiece con "/"',
+  )
+  .optional();
+
 // ─────────────────────────────────────────────
 // CREAR TIENDA
 // ─────────────────────────────────────────────
@@ -21,6 +32,8 @@ export const CrearTiendaSchema = z.object({
 
   titulo: z.string().max(200).trim().optional(),
   descripcion: z.string().max(2000).trim().optional(),
+  // Rubro del negocio (ej "indumentaria"). Define qué categorías ve/usa la tienda.
+  rubro: z.string().max(60).trim().optional(),
   plantillaId: z.number().int().positive().optional(),
   whatsapp: z.string().max(30).trim().optional(),
   instagram: z.string().max(100).trim().optional(),
@@ -47,6 +60,10 @@ export type CrearTiendaDto = z.infer<typeof CrearTiendaSchema>;
 export const ActualizarTiendaSchema = CrearTiendaSchema.partial().extend({
   activa: z.boolean().optional(),
   publica: z.boolean().optional(),
+  // Datos legales del vendedor
+  razonSocial: z.string().max(200).trim().optional().or(z.literal('')),
+  cuit: z.string().max(20).trim().optional().or(z.literal('')),
+  domicilioLegal: z.string().max(300).trim().optional().or(z.literal('')),
 });
 
 export type ActualizarTiendaDto = z.infer<typeof ActualizarTiendaSchema>;
@@ -72,13 +89,21 @@ export const ActualizarTemaSchema = z.object({
   colorAcento: colorHex,
   modoOscuro: z.boolean().optional(),
   navbarStyle: z.string().optional(),
+  navbarVariante: z.enum(['CLASICO', 'PILL', 'BOUTIQUE']).optional(),
+  navbarColorTema: z.enum(['CLARO', 'OSCURO']).optional(),
+  cardVariante: z.enum(['CLASICO', 'MODERNO']).optional(),
+  footerVariante: z.enum(['CENTRADO', 'COLUMNAS']).optional(),
+  botonForma: z.enum(['REDONDEADO', 'CUADRADO']).optional(),
+  fuenteKit: z.enum(['MODERNO', 'EDITORIAL', 'IMPACTO', 'MINIMAL']).optional(),
   heroTitulo: z.string().max(200).optional(),
   heroSubtitulo: z.string().max(300).optional(),
   heroCtaTexto: z.string().max(100).optional(),
   cardMostrarPrecio: z.boolean().optional(),
   cardMostrarBadge: z.boolean().optional(),
   seccionesVisibles: SeccionesVisiblesSchema.optional(),
-  tipoSeccionHero: z.enum(['CARRUSEL', 'BANNER', 'HERO_FIJO', 'VIDEO']).optional(),
+  // Array ordenado de IDs de categoría a mostrar como filas en el home (máx 8).
+  homeCategoriaFilas: z.array(z.number().int().positive()).max(8).optional(),
+  tipoSeccionHero: z.enum(['CARRUSEL', 'BANNER', 'HERO_FIJO', 'VIDEO', 'GALERIA']).optional(),
   intervaloCarrusel: z.number().int().min(1000).max(30000).optional(),
   // Banner promocional (entre destacados y productos)
   bannerPromoActivo: z.boolean().optional(),
@@ -87,6 +112,9 @@ export const ActualizarTemaSchema = z.object({
   bannerPromoImagenUrl: z.string().max(500).optional().nullable(),
   bannerPromoLinkUrl: z.string().max(500).optional().nullable(),
   bannerPromoCtaTexto: z.string().max(100).optional().nullable(),
+  // Categorías destacadas (grid de tarjetas imagen+título+link)
+  categoriasDestacadasActivas: z.boolean().optional(),
+  categoriasDestacadasPosicion: z.enum(['ANTES', 'DESPUES']).optional(),
 });
 
 export type ActualizarTemaDto = z.infer<typeof ActualizarTemaSchema>;
@@ -147,7 +175,7 @@ export const AgregarImagenCarruselSchema = z.object({
   url: z.string().url('La URL de la imagen no es válida').max(500).optional(),
   titulo: z.string().max(200).trim().optional(),
   subtitulo: z.string().max(300).trim().optional(),
-  linkUrl: z.string().url().max(500).optional().or(z.literal('')),
+  linkUrl: linkDestino,
   orden: z.coerce.number().int().min(0).default(0),
   tipo: z.enum(['CARRUSEL', 'BANNER', 'HERO_FIJO', 'VIDEO']).default('CARRUSEL'),
   etiqueta: z.string().max(100).trim().optional(),
@@ -160,7 +188,7 @@ export type AgregarImagenCarruselDto = z.infer<typeof AgregarImagenCarruselSchem
 export const ActualizarImagenCarruselSchema = z.object({
   titulo: z.string().max(200).trim().optional(),
   subtitulo: z.string().max(300).trim().optional(),
-  linkUrl: z.string().url().max(500).optional().or(z.literal('')),
+  linkUrl: linkDestino,
   orden: z.coerce.number().int().min(0).optional(),
   activa: z.boolean().optional(),
   tipo: z.enum(['CARRUSEL', 'BANNER', 'HERO_FIJO', 'VIDEO']).optional(),
@@ -170,6 +198,38 @@ export const ActualizarImagenCarruselSchema = z.object({
 });
 
 export type ActualizarImagenCarruselDto = z.infer<typeof ActualizarImagenCarruselSchema>;
+
+//Categorías destacadas (imagen + título + link)
+export const AgregarCategoriaDestacadaSchema = z.object({
+  imagenUrl: z.string().max(500).optional(),
+  titulo: z.string().min(1, 'El título es requerido').max(200).trim(),
+  linkUrl: z.string().min(1, 'El link es requerido').max(500).trim(),
+  orden: z.coerce.number().int().min(0).default(0),
+});
+
+export type AgregarCategoriaDestacadaDto = z.infer<typeof AgregarCategoriaDestacadaSchema>;
+
+export const ActualizarCategoriaDestacadaSchema = z.object({
+  imagenUrl: z.string().max(500).optional(),
+  titulo: z.string().min(1).max(200).trim().optional(),
+  linkUrl: z.string().min(1).max(500).trim().optional(),
+  // Llega por multipart (string) o JSON (boolean); coaccionamos a boolean.
+  activa: z.preprocess(
+    (v) => (typeof v === 'string' ? v === 'true' : v),
+    z.boolean().optional()
+  ),
+});
+
+export type ActualizarCategoriaDestacadaDto = z.infer<typeof ActualizarCategoriaDestacadaSchema>;
+
+export const ReordenarCategoriasDestacadasSchema = z.object({
+  orden: z.array(z.object({
+    id: z.number().int().positive(),
+    orden: z.number().int().min(0),
+  })),
+});
+
+export type ReordenarCategoriasDestacadasDto = z.infer<typeof ReordenarCategoriasDestacadasSchema>;
 
 //Filtros para listar tiendas en el endpoint público, con paginación, búsqueda por nombre y ubicación, y ordenamiento
 export const FiltrosTiendasSchema = z.object({
@@ -236,3 +296,45 @@ export const GuardarDominioSchema = z.object({
 });
 
 export type GuardarDominioDto = z.infer<typeof GuardarDominioSchema>;
+
+// ─────────────────────────────────────────────
+// CONFIG DE EMAIL MARKETING (proveedor propio del dueño)
+// Cada tienda usa su propio servicio para enviar campañas:
+//  - "brevo": basta la API key (host/port no aplican).
+//  - "gmail" / "smtp": requieren host, puerto, usuario y password (app password en Gmail).
+// La credencial (API key o password) viaja en "credencial" y se cifra antes de guardar.
+// ─────────────────────────────────────────────
+
+export const GuardarConfigEmailSchema = z
+  .object({
+    proveedor: z.enum(['brevo', 'gmail', 'smtp'], {
+      required_error: 'Elegí un proveedor de email',
+      invalid_type_error: 'Proveedor inválido',
+    }),
+    remitente: z
+      .string({ required_error: 'El email del remitente es requerido' })
+      .trim()
+      .toLowerCase()
+      .email('Ingresá un email de remitente válido')
+      .max(180),
+    remitenteNombre: z.string().trim().max(120).optional(),
+    // Credencial: API key (brevo) o password/app-password (gmail/smtp).
+    // Opcional al editar: si no se manda, se conserva la credencial ya guardada.
+    credencial: z.string().trim().min(1, 'La credencial no puede estar vacía').max(500).optional(),
+    host: z.string().trim().max(180).optional(),
+    port: z.coerce.number().int().positive().max(65535).optional(),
+    usuario: z.string().trim().max(180).optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Para SMTP/Gmail necesitamos los datos de conexión.
+    if (data.proveedor === 'smtp' || data.proveedor === 'gmail') {
+      if (!data.host) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['host'], message: 'El host SMTP es requerido' });
+      }
+      if (!data.usuario) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['usuario'], message: 'El usuario SMTP es requerido' });
+      }
+    }
+  });
+
+export type GuardarConfigEmailDto = z.infer<typeof GuardarConfigEmailSchema>;

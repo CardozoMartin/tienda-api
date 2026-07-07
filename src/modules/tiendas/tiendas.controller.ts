@@ -7,6 +7,8 @@ import {
   ActualizarTiendaDto,
   AgregarImagenCarruselDto,
   ActualizarImagenCarruselDto,
+  AgregarCategoriaDestacadaDto,
+  ActualizarCategoriaDestacadaDto,
   AgregarMetodoEntregaDto,
   AgregarMetodoPagoDto,
   CrearTiendaDto,
@@ -14,8 +16,10 @@ import {
   ActualizarAboutUsDto,
   ActualizarMarqueeDto,
   CambiarSlugDto,
+  GuardarConfigEmailDto,
 } from './tiendas.dto';
 import { TiendasService } from './tiendas.service';
+import { RUBROS } from '../../config/categorias.seed';
 
 export class TiendasController {
   private service: TiendasService;
@@ -94,6 +98,52 @@ export class TiendasController {
     }
   };
 
+  // ── Config de email marketing (proveedor propio del dueño) ──
+
+  //controlador para guardar/actualizar la config del proveedor de email del dueño
+  guardarConfigEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.guardarConfigEmail(usuarioId, req.body as GuardarConfigEmailDto);
+      responderOk(res, resultado, 'Configuración de email guardada. Verificá la conexión para empezar a enviar.');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para obtener el estado de la config de email (para el panel)
+  obtenerConfigEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.obtenerConfigEmail(usuarioId);
+      responderOk(res, resultado, 'Configuración de email obtenida');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para verificar la conexión con el proveedor de email del dueño
+  verificarConfigEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.verificarConfigEmail(usuarioId);
+      responderOk(res, resultado, 'Conexión de email verificada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  //controlador para eliminar la configuración de email del dueño
+  eliminarConfigEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const resultado = await this.service.eliminarConfigEmail(usuarioId);
+      responderOk(res, resultado, 'Configuración de email eliminada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
   //controlador para obtener la tienda del usuario autenticado
   obtenerMiTienda = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -139,6 +189,15 @@ export class TiendasController {
   };
 
   // ── Catálogo de métodos ──
+
+  // Catálogo de rubros de negocio (para el onboarding: "¿Qué vendés?").
+  listarRubros = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      responderOk(res, RUBROS, 'Rubros obtenidos');
+    } catch (error) {
+      next(error);
+    }
+  };
 
   listarMetodosPago = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -305,6 +364,77 @@ export class TiendasController {
       const orden = req.body as Array<{ id: number; orden: number }>;
       await this.service.reordenarCarrusel(usuarioId, orden);
       responderOk(res, null, 'Orden del carrusel actualizado');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ── Categorías destacadas ──
+
+  /** GET /tiendas/mi-tienda/categorias-destacadas */
+  listarCategoriasDestacadas = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const categorias = await this.service.listarCategoriasDestacadas(usuarioId);
+      responderOk(res, categorias, 'Categorías destacadas obtenidas');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** POST /tiendas/mi-tienda/categorias-destacadas (form-data con imagen o imagenUrl en body) */
+  agregarCategoriaDestacada = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const file = req.file as Express.Multer.File | undefined;
+      const categoria = await this.service.agregarCategoriaDestacada(
+        usuarioId,
+        req.body as AgregarCategoriaDestacadaDto,
+        file
+      );
+      responderOk(res, categoria, 'Categoría destacada agregada', 201);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** PUT /tiendas/mi-tienda/categorias-destacadas/:categoriaId */
+  actualizarCategoriaDestacada = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const id = parseInt(req.params['categoriaId'] as string, 10);
+      const file = req.file as Express.Multer.File | undefined;
+      const categorias = await this.service.actualizarCategoriaDestacada(
+        usuarioId,
+        id,
+        req.body as ActualizarCategoriaDestacadaDto,
+        file
+      );
+      responderOk(res, categorias, 'Categoría destacada actualizada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** DELETE /tiendas/mi-tienda/categorias-destacadas/:categoriaId */
+  eliminarCategoriaDestacada = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const id = parseInt(req.params['categoriaId'] as string, 10);
+      await this.service.eliminarCategoriaDestacada(usuarioId, id);
+      responderOk(res, null, 'Categoría destacada eliminada');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** PUT /tiendas/mi-tienda/categorias-destacadas/reordenar */
+  reordenarCategoriasDestacadas = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      const { orden } = req.body as { orden: Array<{ id: number; orden: number }> };
+      await this.service.reordenarCategoriasDestacadas(usuarioId, orden);
+      responderOk(res, null, 'Orden de categorías destacadas actualizado');
     } catch (error) {
       next(error);
     }

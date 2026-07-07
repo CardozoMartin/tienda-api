@@ -39,6 +39,7 @@ export class TiendasRepository {
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
         carrusel: { where: carruselPublicoWhere(), orderBy: { orden: 'asc' } },
+        categoriasDestacadas: { where: { activa: true }, orderBy: { orden: 'asc' } },
         aboutUs: true,
         marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
@@ -58,6 +59,7 @@ export class TiendasRepository {
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
         carrusel: { where: carruselPublicoWhere(), orderBy: { orden: 'asc' } },
+        categoriasDestacadas: { where: { activa: true }, orderBy: { orden: 'asc' } },
         aboutUs: true,
         marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
@@ -76,6 +78,7 @@ export class TiendasRepository {
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
         carrusel: { where: carruselPublicoWhere(), orderBy: { orden: 'asc' } },
+        categoriasDestacadas: { where: { activa: true }, orderBy: { orden: 'asc' } },
         aboutUs: true,
         marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
@@ -120,7 +123,7 @@ export class TiendasRepository {
     nombre: string;
     titulo?: string;
     descripcion?: string;
-    plantillaId?: number;
+    rubro?: string;
     whatsapp?: string;
     instagram?: string;
     facebook?: string;
@@ -180,6 +183,7 @@ export class TiendasRepository {
         metodosPago: { include: { metodoPago: true } },
         metodosEntrega: { include: { metodoEntrega: true } },
         carrusel: { where: carruselPublicoWhere(), orderBy: { orden: 'asc' } },
+        categoriasDestacadas: { where: { activa: true }, orderBy: { orden: 'asc' } },
         aboutUs: true,
         marqueeItems: { orderBy: { orden: 'asc' } },
         _count: { select: { productos: true, resenas: true } },
@@ -367,6 +371,51 @@ export class TiendasRepository {
     await prisma.$transaction(
       orden.map(({ id, orden: nuevoOrden }) =>
         prisma.carruselImagen.updateMany({
+          where: { id, tiendaId },
+          data: { orden: nuevoOrden },
+        })
+      )
+    );
+  }
+
+  //Categorías destacadas
+
+  async listarCategoriasDestacadas(tiendaId: number) {
+    return prisma.categoriaDestacada.findMany({
+      where: { tiendaId },
+      orderBy: { orden: 'asc' },
+    });
+  }
+
+  async agregarCategoriaDestacada(
+    tiendaId: number,
+    datos: { imagenUrl: string; titulo: string; linkUrl: string; orden: number }
+  ) {
+    return prisma.categoriaDestacada.create({ data: { tiendaId, ...datos } });
+  }
+
+  async actualizarCategoriaDestacada(
+    id: number,
+    tiendaId: number,
+    datos: { imagenUrl?: string; titulo?: string; linkUrl?: string; activa?: boolean }
+  ) {
+    return prisma.categoriaDestacada.updateMany({
+      where: { id, tiendaId },
+      data: datos,
+    });
+  }
+
+  async eliminarCategoriaDestacada(id: number, tiendaId: number): Promise<void> {
+    await prisma.categoriaDestacada.deleteMany({ where: { id, tiendaId } });
+  }
+
+  async reordenarCategoriasDestacadas(
+    tiendaId: number,
+    orden: Array<{ id: number; orden: number }>
+  ): Promise<void> {
+    await prisma.$transaction(
+      orden.map(({ id, orden: nuevoOrden }) =>
+        prisma.categoriaDestacada.updateMany({
           where: { id, tiendaId },
           data: { orden: nuevoOrden },
         })

@@ -27,6 +27,8 @@ import { crearApp } from "./app";
 import { prisma } from "./config/prisma";
 import { inicializarMailer, verificarMailer } from "./config/mailer";
 import { logger } from "./utils/logger";
+import { dispararProcesamiento } from "./modules/campanas/campanas.worker";
+import { sincronizarCategorias } from "./config/categorias.seed";
 
 
 async function iniciar(): Promise<void> {
@@ -36,6 +38,16 @@ async function iniciar(): Promise<void> {
     // Verificamos la conexión a la base de datos antes de levantar el servidor
     await prisma.$connect();
     logger.info("✅ Conexión a la base de datos exitosa");
+
+    // Sincronizamos el catálogo de categorías del sistema (idempotente: solo crea
+    // las que falten, no duplica). Así al arrancar siempre están todas disponibles.
+    try {
+      const n = await sincronizarCategorias(prisma);
+      logger.info(`📂 Categorías sincronizadas (${n} verificadas)`);
+    } catch (e) {
+      // No bloqueamos el arranque del server si falla la sincronización de categorías.
+      logger.warn("⚠️  No se pudieron sincronizar las categorías:", e);
+    }
 
     // Inicializamos el servicio de email
     await inicializarMailer();
@@ -54,6 +66,10 @@ async function iniciar(): Promise<void> {
       logger.info(`   API:      http://localhost:${env.PORT}${env.API_PREFIX}`);
       logger.info(`   Health:   http://localhost:${env.PORT}/health`);
     });
+
+    // Retomamos campañas que quedaron encoladas/a medias de un envío anterior
+    // (el estado vive en la BD, así que sobrevive a reinicios del server).
+    dispararProcesamiento();
 
  
 

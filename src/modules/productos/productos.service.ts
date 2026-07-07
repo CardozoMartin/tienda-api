@@ -14,6 +14,7 @@ import {
 } from './productos.dto';
 import { ProductosRepository } from './productos.repository';
 import { cacheService } from '../../utils/cache';
+import { idsAncestros, idsDescendientes, rubroDeCategoria } from './categorias.tree';
 
 export class ProductosService {
   private repository: ProductosRepository;
@@ -125,6 +126,8 @@ export class ProductosService {
 
     const variantes = (datos.variantes || []).map((variante) => ({
       nombre: variante.nombre.trim(),
+      color: variante.color?.trim() || undefined,
+      talle: variante.talle?.trim() || undefined,
       sku: variante.sku?.trim() || undefined,
       precioExtra: Number(variante.precioExtra ?? 0),
       imagenUrl: variante.imagenUrl?.trim() || undefined,
@@ -136,6 +139,8 @@ export class ProductosService {
     const stockFinal = variantes.length > 0
       ? variantes.reduce((acc, v) => acc + v.stock, 0)
       : stock;
+
+    const guiaTallesId = await this.resolverGuiaTalles(tienda.id, datos.guiaTallesId);
 
     const nuevoProducto = await this.repository.crear({
       tiendaId: tienda.id,
@@ -150,6 +155,7 @@ export class ProductosService {
       disponible: Boolean(datos.disponible),
       destacado: Boolean(datos.destacado),
       stock: stockFinal,
+      guiaTallesId,
       tags,
       variantes,
     });
@@ -181,10 +187,23 @@ export class ProductosService {
     if (sanitizedData.precioOferta === '') sanitizedData.precioOferta = null;
     if (sanitizedData.categoriaId === '') sanitizedData.categoriaId = undefined;
 
+    // Guía de talles: '' / null → desasociar; número → validar pertenencia
+    if ('guiaTallesId' in sanitizedData) {
+      sanitizedData.guiaTallesId = await this.resolverGuiaTalles(
+        tienda.id,
+        sanitizedData.guiaTallesId
+      );
+    }
+
     if (sanitizedData.stock !== undefined) {
-      sanitizedData.stock = Number(sanitizedData.stock);
-      if (Number.isNaN(sanitizedData.stock) || sanitizedData.stock < 0) {
-        throw new ErrorApi('El stock debe ser un número entero mayor o igual a 0', 400);
+      // Si el producto tiene variantes, el stock se calcula desde ellas: ignoramos el valor manual
+      if ((productoActual as any).variantes?.length > 0) {
+        delete sanitizedData.stock;
+      } else {
+        sanitizedData.stock = Number(sanitizedData.stock);
+        if (Number.isNaN(sanitizedData.stock) || sanitizedData.stock < 0) {
+          throw new ErrorApi('El stock debe ser un número entero mayor o igual a 0', 400);
+        }
       }
     }
 
@@ -350,9 +369,19 @@ export class ProductosService {
     
     // Subir a cloudinary
     const imagenUrl = await uploadImageToCloudinary(file.buffer);
-    
+
     // Actualizar la variante
     const variante = await this.repository.actualizarVariante(varianteId, productoId, { imagenUrl });
+
+    // Si la variante tiene color, la foto es "del color": la propagamos a todas
+    // las variantes del mismo color (ej: la foto de la camisa negra aplica a Negro/S, Negro/M, Negro/L)
+    if (variante.color) {
+      await prisma.productoVariante.updateMany({
+        where: { productoId, color: variante.color, NOT: { id: varianteId } },
+        data: { imagenUrl },
+      });
+    }
+
     this.invalidarCacheProductos(tienda.id);
     return variante;
   }
@@ -373,6 +402,25 @@ export class ProductosService {
     const tienda = await this.tiendasRepository.buscarPorUsuarioId(usuarioId);
     if (!tienda) throw new ErrorApi('No tenés ninguna tienda creada', 404);
     return tienda;
+  }
+
+  /**
+   * Resuelve el guiaTallesId de un payload:
+   * - '' / null / undefined → null (sin guía)
+   * - número → valida que la guía pertenezca a la tienda; si no, error
+   */
+  private async resolverGuiaTalles(
+    tiendaId: number,
+    valor: number | '' | null | undefined
+  ): Promise<number | null> {
+    if (valor === '' || valor === null || valor === undefined) return null;
+    const id = Number(valor);
+    const guia = await prisma.guiaTalles.findFirst({
+      where: { id, tiendaId },
+      select: { id: true },
+    });
+    if (!guia) throw new ErrorApi('La guía de talles seleccionada no existe', 400);
+    return id;
   }
 
   private async verificarProductoOFallar(productoId: number, tiendaId: number) {
@@ -423,23 +471,66 @@ export class ProductosService {
 
   // ── Categorías ──
 
-  async listarCategorias() {
-    return this.repository.listarCategorias();
+  // Owner: todas las categorías, filtradas por el RUBRO de su tienda (para clasificar
+  // productos solo dentro de su rubro). Si la tienda no tiene rubro (tiendas viejas),
+  // devuelve todas. Trae el árbol completo del rubro (no solo las que tienen productos).
+  async listarCategorias(usuarioId?: number) {
+    let rubro: string | null = null;
+    if (usuarioId) {
+      const tienda = await prisma.tienda.findFirst({ where: { usuarioId }, select: { rubro: true } });
+      rubro = tienda?.rubro ?? null;
+    }
+    return this.categoriasDelRubro(rubro);
   }
 
+  // Storefront: categorías de la tienda que tienen productos disponibles + sus ANCESTROS
+  // (para no romper el árbol de 3 niveles), filtradas por el rubro de la tienda.
   async listarCategoriasPorTienda(tiendaId: number) {
-    return prisma.categoria.findMany({
-      where: {
-        activa: true,
-        productos: {
-          some: {
-            tiendaId,
-            disponible: true,
-          },
-        },
-      },
+    const tienda = await prisma.tienda.findUnique({ where: { id: tiendaId }, select: { rubro: true } });
+
+    // Hojas con productos disponibles en esta tienda.
+    const conProductos = await prisma.categoria.findMany({
+      where: { activa: true, productos: { some: { tiendaId, disponible: true } } },
+      select: { id: true },
+    });
+
+    // Agregamos la cadena de ancestros de cada una para que el árbol quede completo.
+    const ids = new Set<number>();
+    for (const c of conProductos) {
+      ids.add(c.id);
+      for (const anc of await idsAncestros(c.id)) ids.add(anc);
+    }
+
+    if (ids.size === 0) return [];
+
+    const cats = await prisma.categoria.findMany({
+      where: { id: { in: [...ids] }, activa: true },
+      select: { id: true, nombre: true, slug: true, padreId: true },
       orderBy: { nombre: 'asc' },
     });
+
+    // Filtro por rubro (si la tienda tiene uno). rubro vive en la raíz.
+    if (!tienda?.rubro) return cats;
+    const filtradas: typeof cats = [];
+    for (const c of cats) {
+      if ((await rubroDeCategoria(c.id)) === tienda.rubro) filtradas.push(c);
+    }
+    return filtradas;
+  }
+
+  // Devuelve todas las categorías activas de un rubro (raíz + descendientes). Si rubro
+  // es null, devuelve todas. Usa el árbol cacheado para resolver la raíz del rubro.
+  private async categoriasDelRubro(rubro: string | null) {
+    const base = await prisma.categoria.findMany({
+      where: { activa: true },
+      select: { id: true, nombre: true, slug: true, padreId: true },
+      orderBy: { nombre: 'asc' },
+    });
+    if (!rubro) return base;
+    const raiz = await prisma.categoria.findFirst({ where: { rubro, padreId: null }, select: { id: true } });
+    if (!raiz) return base;
+    const idsRubro = new Set(await idsDescendientes(raiz.id));
+    return base.filter((c: (typeof base)[number]) => idsRubro.has(c.id));
   }
 
   // ── Excel ──
@@ -449,26 +540,51 @@ export class ProductosService {
 
     const productos = await prisma.producto.findMany({
       where: { tiendaId: tienda.id },
-      include: { categoria: true, tags: true },
+      include: { categoria: true, tags: true, variantes: true },
       orderBy: { nombre: 'asc' },
     });
 
-    const data = productos.map((p: any) => ({
+    // Hoja 1: Productos. El stock de los que tienen variantes se calcula desde ellas,
+    // por eso mostramos "(según variantes)" en vez de un número editable.
+    const dataProductos = productos.map((p: any) => ({
       Nombre: p.nombre,
       Descripción: p.descripcion || '',
       Precio: Number(p.precio),
       'Precio Oferta': p.precioOferta ? Number(p.precioOferta) : '',
       Moneda: p.moneda,
-      Stock: p.stock ?? 0,
+      Stock: p.variantes.length > 0 ? '(según variantes)' : (p.stock ?? 0),
       Categoría: p.categoria?.nombre || '',
       Tags: p.tags.map((t: any) => t.nombre).join(', '),
       Disponible: p.disponible ? 'SÍ' : 'NO',
       Destacado: p.destacado ? 'SÍ' : 'NO',
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
+    // Hoja 2: Variantes (una fila por combinación, asociada al producto por su nombre)
+    const dataVariantes: any[] = [];
+    for (const p of productos as any[]) {
+      for (const v of p.variantes) {
+        dataVariantes.push({
+          Producto: p.nombre,
+          Color: v.color || '',
+          Talle: v.talle || '',
+          Nombre: v.nombre, // por si es una variante sin color/talle estructurado
+          Stock: v.stock ?? 0,
+          'Extra $': Number(v.precioExtra ?? 0),
+          SKU: v.sku || '',
+          Disponible: v.disponible ? 'SÍ' : 'NO',
+        });
+      }
+    }
+
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Productos');
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(dataProductos), 'Productos');
+    // Si no hay variantes, igual dejamos la hoja con los encabezados como guía
+    const hojaVariantes = dataVariantes.length
+      ? XLSX.utils.json_to_sheet(dataVariantes)
+      : XLSX.utils.json_to_sheet([
+          { Producto: '', Color: '', Talle: '', Nombre: '', Stock: '', 'Extra $': '', SKU: '', Disponible: '' },
+        ]);
+    XLSX.utils.book_append_sheet(workbook, hojaVariantes, 'Variantes');
 
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
   }
@@ -480,6 +596,9 @@ export class ProductosService {
     const data = XLSX.utils.sheet_to_json<any>(workbook.Sheets[sheetName]);
 
     if (!data.length) throw new ErrorApi('El archivo Excel está vacío o no tiene el formato correcto', 400);
+
+    // Hoja "Variantes" (opcional): agrupamos por nombre de producto (case-insensitive)
+    const variantesPorProducto = this.leerVariantesDelExcel(workbook);
 
     let creados = 0;
     let actualizados = 0;
@@ -515,26 +634,40 @@ export class ProductosService {
         precio,
         precioOferta: precioOferta && precioOferta < precio ? precioOferta : undefined,
         moneda: row.Moneda?.toString().toUpperCase() || 'ARS',
-        stock: Number(row.Stock ?? 0),
+        // El texto "(según variantes)" que exportamos no es un número: lo tomamos como 0.
+        // Si el producto tiene variantes, el stock se recalcula al reemplazarlas.
+        stock: Number.isFinite(Number(row.Stock)) ? Number(row.Stock) : 0,
         categoriaId: categoria?.id,
         disponible: row.Disponible?.toString().toUpperCase() === 'SÍ' || row.Disponible === true,
         destacado: row.Destacado?.toString().toUpperCase() === 'SÍ' || row.Destacado === true,
       };
 
+      // Variantes de este producto en la hoja "Variantes" (si las hay)
+      const variantesRow = variantesPorProducto.get(nombre.toLowerCase()) ?? [];
+
       try {
+        let productoId: number;
         const existe = await this.repository.buscarPorNombre(nombre, tienda.id);
         if (existe) {
           await this.repository.actualizar(existe.id, payload as any);
           await this.repository.sincronizarTags(existe.id, rowTags);
+          productoId = existe.id;
           actualizados++;
         } else {
-          await this.repository.crear({
+          const nuevo = await this.repository.crear({
             tiendaId: tienda.id,
             ...(payload as any),
             tags: rowTags,
             variantes: [],
           });
+          productoId = (nuevo as any).id;
           creados++;
+        }
+
+        // El Excel es la fuente de verdad: reemplazamos las variantes del producto
+        // (solo si vinieron variantes para él en la hoja).
+        if (variantesRow.length > 0) {
+          await this.repository.reemplazarVariantes(productoId, variantesRow);
         }
       } catch (e: any) {
         errores.push(`Fila ${fila} "${nombre}": ${e.message}`);
@@ -543,5 +676,52 @@ export class ProductosService {
 
     this.invalidarCacheProductos(tienda.id);
     return { creados, actualizados, total: data.length, errores };
+  }
+
+  // Lee la hoja "Variantes" del workbook y las agrupa por nombre de producto (minúsculas).
+  private leerVariantesDelExcel(workbook: XLSX.WorkBook) {
+    const mapa = new Map<
+      string,
+      Array<{ nombre: string; color?: string; talle?: string; sku?: string; precioExtra: number; stock: number; disponible: boolean }>
+    >();
+
+    // Buscamos la hoja llamada "Variantes" (case-insensitive)
+    const hojaNombre = workbook.SheetNames.find((n) => n.trim().toLowerCase() === 'variantes');
+    if (!hojaNombre) return mapa;
+
+    const filas = XLSX.utils.sheet_to_json<any>(workbook.Sheets[hojaNombre]);
+    for (const row of filas) {
+      const producto = row.Producto?.toString().trim();
+      if (!producto) continue;
+
+      const color = row.Color?.toString().trim() || undefined;
+      const talle = row.Talle?.toString().trim() || undefined;
+      // Nombre legible: usa la columna Nombre si vino, si no arma "Color / Talle"
+      const nombreExplicito = row.Nombre?.toString().trim();
+      const nombre =
+        nombreExplicito ||
+        [color, talle].filter(Boolean).join(' / ') ||
+        'Único';
+
+      const stock = Number(row.Stock ?? 0);
+      const precioExtra = Number(row['Extra $'] ?? row.Extra ?? 0);
+
+      const clave = producto.toLowerCase();
+      if (!mapa.has(clave)) mapa.set(clave, []);
+      mapa.get(clave)!.push({
+        nombre,
+        color,
+        talle,
+        sku: row.SKU?.toString().trim() || undefined,
+        precioExtra: Number.isFinite(precioExtra) && precioExtra > 0 ? precioExtra : 0,
+        stock: Number.isFinite(stock) && stock > 0 ? Math.floor(stock) : 0,
+        disponible:
+          row.Disponible === undefined ||
+          row.Disponible?.toString().toUpperCase() === 'SÍ' ||
+          row.Disponible?.toString().toUpperCase() === 'SI' ||
+          row.Disponible === true,
+      });
+    }
+    return mapa;
   }
 }

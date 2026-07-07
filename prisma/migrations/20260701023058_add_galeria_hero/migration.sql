@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE `carrusel_imagenes` MODIFY `tipo` ENUM('CARRUSEL', 'BANNER', 'HERO_FIJO', 'VIDEO', 'GALERIA') NOT NULL DEFAULT 'CARRUSEL';
+
+-- AlterTable
+ALTER TABLE `tienda_tema_config` MODIFY `tipoSeccionHero` ENUM('CARRUSEL', 'BANNER', 'HERO_FIJO', 'VIDEO', 'GALERIA') NOT NULL DEFAULT 'HERO_FIJO';

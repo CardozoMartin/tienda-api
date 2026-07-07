@@ -1,7 +1,7 @@
 import cors from 'cors';
 import express, { Application } from 'express';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+// import rateLimit from 'express-rate-limit'; // rate limit global desactivado temporalmente
 import morgan from 'morgan';
 import * as Sentry from '@sentry/node';
 import { env } from './config/env';
@@ -89,19 +89,20 @@ export function crearApp(): Application {
     })
   );
 
-  // Rate limiting: protege contra abuso y ataques de fuerza bruta
-  const limiter = rateLimit({
-    windowMs: env.RATE_LIMIT_WINDOW_MS,
-    max: env.RATE_LIMIT_MAX,
-    message: {
-      ok: false,
-      mensaje: "Demasiadas solicitudes. Por favor intentá más tarde.",
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  // Rate limiting: protege contra abuso y ataques de fuerza bruta.
+  // TEMPORALMENTE DESACTIVADO. Reactivar descomentando.
+  // const limiter = rateLimit({
+  //   windowMs: env.RATE_LIMIT_WINDOW_MS,
+  //   max: env.RATE_LIMIT_MAX,
+  //   message: {
+  //     ok: false,
+  //     mensaje: "Demasiadas solicitudes. Por favor intentá más tarde.",
+  //   },
+  //   standardHeaders: true,
+  //   legacyHeaders: false,
+  // });
 
-  app.use(limiter);
+  // app.use(limiter);
 
 
 

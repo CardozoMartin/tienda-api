@@ -1,6 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { calcularSkip } from '../../utils/helpers';
 import { FiltrosProductosDto } from './productos.dto';
+import { idsDescendientes } from './categorias.tree';
 
 type WhereInput = Record<string, any>;
 
@@ -8,6 +9,7 @@ const INCLUDE_PRODUCTO = {
   categoria: true,
   imagenes: { orderBy: { orden: 'asc' as const } },
   variantes: true,
+  guiaTalles: true,
   tags: true,
   _count: { select: { resenas: true } },
 } as const;
@@ -47,6 +49,13 @@ export class ProductosRepository {
     filtros: FiltrosProductosDto,
     soloPublicos: boolean = true
   ): Promise<{ datos: unknown[]; total: number }> {
+    // Filtro por categoría RECURSIVO: al filtrar por una categoría traemos también
+    // los productos de todos sus descendientes (N niveles). Para una hoja devuelve
+    // [id] → mismo comportamiento que antes. Resuelto contra el árbol cacheado.
+    const idsCategoria = filtros.categoriaId
+      ? await idsDescendientes(filtros.categoriaId)
+      : null;
+
     // Construimos el where dinámicamente según los filtros recibidos
     const where: WhereInput = {
       tiendaId,
@@ -54,12 +63,7 @@ export class ProductosRepository {
       // Filtro de disponible solo aplica para el owner (soloPublicos = false)
       ...(filtros.disponible !== undefined && !soloPublicos && { disponible: filtros.disponible }),
       ...(filtros.destacado !== undefined && { destacado: filtros.destacado }),
-      ...(filtros.categoriaId && {
-        OR: [
-          { categoriaId: filtros.categoriaId },
-          { categoria: { padreId: filtros.categoriaId } },
-        ],
-      }),
+      ...(idsCategoria && { categoriaId: { in: idsCategoria } }),
       // Búsqueda por nombre o descripción
       ...(filtros.busqueda && {
         OR: [
@@ -112,9 +116,12 @@ export class ProductosRepository {
     categoriaId?: number;
     disponible: boolean;
     destacado: boolean;
+    guiaTallesId?: number | null;
     tags: string[];
     variantes: Array<{
       nombre: string;
+      color?: string;
+      talle?: string;
       sku?: string;
       precioExtra: number;
       imagenUrl?: string;
@@ -197,6 +204,8 @@ export class ProductosRepository {
     productoId: number,
     datos: {
       nombre: string;
+      color?: string;
+      talle?: string;
       sku?: string;
       precioExtra: number;
       imagenUrl?: string;
@@ -216,6 +225,35 @@ export class ProductosRepository {
 
   async eliminarVariante(varianteId: number, productoId: number): Promise<void> {
     await prisma.productoVariante.deleteMany({ where: { id: varianteId, productoId } });
+  }
+
+  // Reemplaza TODAS las variantes de un producto por las nuevas (usado en import Excel).
+  // Recalcula el stock del producto como la suma del stock de las variantes.
+  async reemplazarVariantes(
+    productoId: number,
+    variantes: Array<{
+      nombre: string;
+      color?: string;
+      talle?: string;
+      sku?: string;
+      precioExtra: number;
+      stock: number;
+      disponible: boolean;
+    }>
+  ): Promise<void> {
+    await prisma.$transaction(async (tx: any) => {
+      await tx.productoVariante.deleteMany({ where: { productoId } });
+      if (variantes.length > 0) {
+        await tx.productoVariante.createMany({
+          data: variantes.map((v) => ({ productoId, ...v })),
+        });
+      }
+      const stockTotal = variantes.reduce((acc, v) => acc + (v.stock || 0), 0);
+      // Si no hay variantes, no tocamos el stock manual del producto
+      if (variantes.length > 0) {
+        await tx.producto.update({ where: { id: productoId }, data: { stock: stockTotal } });
+      }
+    });
   }
 
   async buscarVariantePorSku(sku: string, tiendaId: number, excluirVarianteId?: number) {

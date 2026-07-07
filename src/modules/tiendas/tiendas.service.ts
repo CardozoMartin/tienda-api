@@ -15,6 +15,8 @@ import {
   ActualizarMetodoEntregaDto,
   AgregarImagenCarruselDto,
   ActualizarImagenCarruselDto,
+  AgregarCategoriaDestacadaDto,
+  ActualizarCategoriaDestacadaDto,
   FiltrosTiendasDto,
   ActualizarAboutUsDto,
   ActualizarMarqueeDto,
@@ -23,6 +25,9 @@ import {
 import { uploadImageToCloudinary } from "@/utils/cloudinary";
 import { cacheService } from "../../utils/cache";
 import { logger } from "../../utils/logger";
+import { cifrar, descifrar } from "../../utils/cifrado";
+import { GuardarConfigEmailDto } from "./tiendas.dto";
+import nodemailer from "nodemailer";
 
 export class TiendasService {
   private repository: TiendasRepository;
@@ -57,7 +62,7 @@ export class TiendasService {
       nombre: datos.nombre,
       titulo: datos.titulo,
       descripcion: datos.descripcion,
-      plantillaId: datos.plantillaId,
+      rubro: datos.rubro,
       whatsapp: datos.whatsapp,
       instagram: datos.instagram,
       facebook: datos.facebook,
@@ -104,10 +109,13 @@ export class TiendasService {
   //Igual que obtenerPorSlug, pero con una regla extra: el dominio debe estar VERIFICADO.
   //Así evitamos que alguien cargue un dominio ajeno y se sirva la tienda sin probar que es suyo.
   async obtenerPorDominio(dominio: string) {
+    //1.- Normalizamos el dominio: quitamos espacios y lo pasamos a minúsculas.
     const dominioNormalizado = dominio.trim().toLowerCase();
+    //2.- Buscamos en caché primero, para no saturar la base de datos con consultas a dominios inexistentes.
     const cacheKey = `tienda_dominio_${dominioNormalizado}`;
     let tienda: any = cacheService.get(cacheKey);
 
+    //3.- Si no está en caché, buscamos en la base de datos. Solo devolvemos la tienda si está activa, pública y con dominio verificado.
     if (!tienda) {
       tienda = await this.repository.buscarPorDominio(dominioNormalizado);
       if (!tienda || !tienda.dominioVerificado || !tienda.activa || !tienda.publica) {
@@ -128,6 +136,7 @@ export class TiendasService {
   //Guarda el dominio como NO verificado y genera un token para la verificación por DNS (registro TXT).
   //Devuelve la instrucción que el usuario debe configurar en su proveedor de dominio.
   async guardarDominio(usuarioId: number, dominio: string) {
+    //1.- Buscamos la tienda del usuario. Si no tiene, devolvemos error 404.
     const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
     if (!tienda) {
       throw new ErrorApi("No tenés ninguna tienda creada", 404);
@@ -153,7 +162,7 @@ export class TiendasService {
       cacheService.del(`tienda_dominio_${tienda.dominioPersonalizado}`);
     }
 
-    // Instrucción para el panel: qué registro TXT debe crear el usuario.
+    // Instrucción para el panel: el TXT para verificar propiedad y el CNAME para apuntar.
     return {
       dominio,
       verificado: false,
@@ -163,6 +172,7 @@ export class TiendasService {
         valor: token,
         ayuda: `Agregá un registro TXT en tu proveedor de dominio con este valor, y luego presioná "Verificar".`,
       },
+      instruccionApuntado: this.instruccionApuntado(),
     };
   }
 
@@ -214,6 +224,19 @@ export class TiendasService {
     return { verificado: true, dominio: tienda.dominioPersonalizado, mensaje: "Dominio verificado correctamente" };
   }
 
+  // Instrucción del registro CNAME que apunta el dominio del usuario a nuestra
+  // plataforma (Netlify). Esto es lo que hace que el dominio CARGUE la tienda
+  // (distinto de la verificación TXT, que solo prueba la propiedad).
+  private instruccionApuntado() {
+    const destino = process.env.STOREFRONT_HOST ?? "apptiendizi.netlify.app";
+    return {
+      tipo: "CNAME",
+      host: "www",
+      valor: destino,
+      ayuda: `Apuntá tu dominio a nuestra plataforma con este registro CNAME para que cargue tu tienda.`,
+    };
+  }
+
   //Servicio para obtener el estado actual del dominio del dueño (para mostrar en el panel).
   async obtenerEstadoDominio(usuarioId: number) {
     const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
@@ -226,7 +249,175 @@ export class TiendasService {
       instruccionDns: tienda.dominioTokenVerif
         ? { tipo: "TXT", host: "@", valor: tienda.dominioTokenVerif }
         : null,
+      instruccionApuntado: tienda.dominioPersonalizado ? this.instruccionApuntado() : null,
     };
+  }
+
+  // ─────────────────────────────────────────────
+  // CONFIG DE EMAIL MARKETING (proveedor propio del dueño)
+  // ─────────────────────────────────────────────
+
+  // Defaults de host/puerto según proveedor, para que el dueño no tenga que saberlos.
+  private datosSmtpPorProveedor(
+    proveedor: GuardarConfigEmailDto["proveedor"],
+    host?: string,
+    port?: number
+  ): { host: string | null; port: number | null } {
+    if (proveedor === "gmail") {
+      return { host: host ?? "smtp.gmail.com", port: port ?? 587 };
+    }
+    if (proveedor === "smtp") {
+      return { host: host ?? null, port: port ?? 587 };
+    }
+    // brevo se maneja por API, no por SMTP.
+    return { host: null, port: null };
+  }
+
+  // Guarda la configuración del proveedor de email del dueño. La credencial se
+  // cifra antes de persistir. Cambiar la config marca emailVerificadoConfig=false
+  // hasta que se pruebe la conexión con verificarConfigEmail.
+  async guardarConfigEmail(usuarioId: number, datos: GuardarConfigEmailDto) {
+    const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
+    if (!tienda) {
+      throw new ErrorApi("No tenés ninguna tienda creada", 404);
+    }
+
+    // La credencial es opcional al editar: si no se manda, conservamos la guardada.
+    // Pero si nunca hubo credencial, es obligatoria.
+    if (!datos.credencial && !tienda.emailCredencial) {
+      throw new ErrorApi(
+        datos.proveedor === "brevo"
+          ? "Ingresá tu API key de Brevo"
+          : "Ingresá la contraseña / app password del email",
+        400
+      );
+    }
+
+    const { host, port } = this.datosSmtpPorProveedor(datos.proveedor, datos.host, datos.port);
+
+    await this.repository.actualizar(tienda.id, {
+      emailProveedor: datos.proveedor,
+      emailRemitente: datos.remitente,
+      emailRemitenteNombre: datos.remitenteNombre ?? null,
+      emailHost: host,
+      emailPort: port,
+      // En SMTP/Gmail el usuario suele ser el mismo email; si no lo mandan, usamos el remitente.
+      emailUsuario: datos.proveedor === "brevo" ? null : datos.usuario ?? datos.remitente,
+      // Solo re-ciframos si llegó una credencial nueva; si no, dejamos la existente.
+      ...(datos.credencial ? { emailCredencial: cifrar(datos.credencial) } : {}),
+      // Cualquier cambio de config invalida la verificación previa.
+      emailVerificadoConfig: false,
+    });
+
+    return this.obtenerConfigEmail(usuarioId);
+  }
+
+  // Estado de la config para el panel. NUNCA expone la credencial: solo si hay
+  // una cargada (para que el front muestre "••••" y no la pida de nuevo).
+  async obtenerConfigEmail(usuarioId: number) {
+    const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
+    if (!tienda) {
+      throw new ErrorApi("No tenés ninguna tienda creada", 404);
+    }
+    return {
+      proveedor: tienda.emailProveedor ?? null,
+      remitente: tienda.emailRemitente ?? null,
+      remitenteNombre: tienda.emailRemitenteNombre ?? null,
+      host: tienda.emailHost ?? null,
+      port: tienda.emailPort ?? null,
+      usuario: tienda.emailUsuario ?? null,
+      tieneCredencial: !!tienda.emailCredencial,
+      verificado: tienda.emailVerificadoConfig,
+      // El dueño no puede mandar campañas hasta tener config verificada.
+      listoParaEnviar: !!tienda.emailProveedor && tienda.emailVerificadoConfig,
+    };
+  }
+
+  // Elimina la configuración de email del dueño: limpia proveedor, remitente,
+  // credencial cifrada y datos SMTP, y marca la config como no verificada.
+  // Después de esto, el dueño no puede enviar campañas hasta reconfigurar.
+  async eliminarConfigEmail(usuarioId: number) {
+    const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
+    if (!tienda) {
+      throw new ErrorApi("No tenés ninguna tienda creada", 404);
+    }
+    await this.repository.actualizar(tienda.id, {
+      emailProveedor: null,
+      emailRemitente: null,
+      emailRemitenteNombre: null,
+      emailHost: null,
+      emailPort: null,
+      emailUsuario: null,
+      emailCredencial: null,
+      emailVerificadoConfig: false,
+    });
+    return this.obtenerConfigEmail(usuarioId);
+  }
+
+  // Prueba REAL que las credenciales funcionan. Para SMTP/Gmail abre la conexión
+  // con nodemailer y hace verify(); para Brevo pega a su API de cuenta.
+  // Si todo va bien, marca emailVerificadoConfig=true.
+  async verificarConfigEmail(usuarioId: number) {
+    const tienda = await this.repository.buscarPorUsuarioId(usuarioId);
+    if (!tienda) {
+      throw new ErrorApi("No tenés ninguna tienda creada", 404);
+    }
+    if (!tienda.emailProveedor || !tienda.emailCredencial) {
+      throw new ErrorApi("Primero configurá tu proveedor de email", 400);
+    }
+
+    const credencial = descifrar(tienda.emailCredencial);
+
+    if (tienda.emailProveedor === "brevo") {
+      await this.verificarBrevo(credencial);
+    } else {
+      await this.verificarSmtp(tienda, credencial);
+    }
+
+    await this.repository.actualizar(tienda.id, { emailVerificadoConfig: true });
+    return { verificado: true, mensaje: "Conexión con tu proveedor de email verificada correctamente" };
+  }
+
+  // Verifica la API key de Brevo consultando su endpoint de cuenta.
+  private async verificarBrevo(apiKey: string) {
+    let res: Response;
+    try {
+      res = await fetch("https://api.brevo.com/v3/account", {
+        headers: { "api-key": apiKey, accept: "application/json" },
+      });
+    } catch (err) {
+      logger.warn("[EMAIL-CONFIG] Error de red verificando Brevo:", err);
+      throw new ErrorApi("No pudimos conectar con Brevo. Intentá de nuevo en un momento.", 502);
+    }
+    if (res.status === 401) {
+      throw new ErrorApi("La API key de Brevo es inválida. Revisá que la copiaste completa.", 422);
+    }
+    if (!res.ok) {
+      throw new ErrorApi("Brevo rechazó la conexión. Verificá tu API key.", 422);
+    }
+  }
+
+  // Verifica conexión SMTP (Gmail u otro) abriendo el transport y haciendo verify().
+  private async verificarSmtp(tienda: any, password: string) {
+    if (!tienda.emailHost) {
+      throw new ErrorApi("Falta el host SMTP en la configuración", 400);
+    }
+    const transporter = nodemailer.createTransport({
+      host: tienda.emailHost,
+      port: tienda.emailPort ?? 587,
+      secure: (tienda.emailPort ?? 587) === 465,
+      auth: { user: tienda.emailUsuario ?? tienda.emailRemitente, pass: password },
+    });
+    try {
+      await transporter.verify();
+    } catch (err) {
+      logger.warn(`[EMAIL-CONFIG] Falló verify SMTP de tienda ${tienda.id}:`, err);
+      throw new ErrorApi(
+        "No pudimos conectar con tu servidor de email. Revisá el host, el usuario y la contraseña " +
+          "(en Gmail tenés que usar una 'contraseña de aplicación', no la de tu cuenta).",
+        422
+      );
+    }
   }
 
   /**
@@ -269,6 +460,11 @@ export class TiendasService {
 
     // Si se quiere cambiar el nombre, regeneramos el slug
     let datosActualizacion: typeof datos & { slug?: string } = { ...datos };
+
+    // Datos legales: string vacío → null para poder limpiarlos
+    for (const campo of ['razonSocial', 'cuit', 'domicilioLegal'] as const) {
+      if ((datosActualizacion as any)[campo] === '') (datosActualizacion as any)[campo] = null;
+    }
 
     if (datos.nombre && datos.nombre !== tienda.nombre) {
       let nuevoSlug = generarSlug(datos.nombre);
@@ -426,6 +622,67 @@ export class TiendasService {
   ) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     await this.repository.reordenarCarrusel(tienda.id, orden);
+    this.invalidarCacheTienda(tienda.slug);
+  }
+
+  // Categorías destacadas
+
+  async listarCategoriasDestacadas(usuarioId: number) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    return this.repository.listarCategoriasDestacadas(tienda.id);
+  }
+
+  async agregarCategoriaDestacada(
+    usuarioId: number,
+    datos: AgregarCategoriaDestacadaDto,
+    file?: Express.Multer.File
+  ) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    let imagenUrl = datos.imagenUrl;
+    if (file) {
+      imagenUrl = await uploadImageToCloudinary(file.buffer);
+    }
+    if (!imagenUrl) {
+      throw new ErrorApi('La imagen es requerida', 400);
+    }
+    const resultado = await this.repository.agregarCategoriaDestacada(tienda.id, {
+      imagenUrl,
+      titulo: datos.titulo,
+      linkUrl: datos.linkUrl,
+      orden: datos.orden,
+    });
+    this.invalidarCacheTienda(tienda.slug);
+    return resultado;
+  }
+
+  async actualizarCategoriaDestacada(
+    usuarioId: number,
+    id: number,
+    datos: ActualizarCategoriaDestacadaDto,
+    file?: Express.Multer.File
+  ) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    const patch = { ...datos };
+    if (file) {
+      patch.imagenUrl = await uploadImageToCloudinary(file.buffer);
+    }
+    await this.repository.actualizarCategoriaDestacada(id, tienda.id, patch);
+    this.invalidarCacheTienda(tienda.slug);
+    return this.repository.listarCategoriasDestacadas(tienda.id);
+  }
+
+  async eliminarCategoriaDestacada(usuarioId: number, id: number) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    await this.repository.eliminarCategoriaDestacada(id, tienda.id);
+    this.invalidarCacheTienda(tienda.slug);
+  }
+
+  async reordenarCategoriasDestacadas(
+    usuarioId: number,
+    orden: Array<{ id: number; orden: number }>
+  ) {
+    const tienda = await this.obtenerTiendaOFallar(usuarioId);
+    await this.repository.reordenarCategoriasDestacadas(tienda.id, orden);
     this.invalidarCacheTienda(tienda.slug);
   }
 

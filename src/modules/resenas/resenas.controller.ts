@@ -40,7 +40,9 @@ export class ResenasController {
     try {
       const tiendaId = parseInt(req.params['tiendaId'] as string, 10);
       const cliente = req.clienteAuth!;
-      const autorNombre = `${req.body.autorNombre || 'Cliente'}`;
+      // El token del cliente no trae el nombre, así que lo derivamos del email
+      // (mismo criterio que las reseñas de producto).
+      const autorNombre = cliente.email.split('@')[0];
       const resena = await this.service.crearResenaTienda(
         tiendaId,
         req.body as CrearResenaDto,
