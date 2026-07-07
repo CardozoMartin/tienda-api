@@ -62,6 +62,7 @@ export class TiendasService {
       nombre: datos.nombre,
       titulo: datos.titulo,
       descripcion: datos.descripcion,
+      rubro: datos.rubro,
       whatsapp: datos.whatsapp,
       instagram: datos.instagram,
       facebook: datos.facebook,

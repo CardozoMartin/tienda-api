@@ -8,6 +8,17 @@ const colorHex = z
   .regex(/^#[0-9A-Fa-f]{6}$/, 'El color debe ser un hexadecimal válido (#RRGGBB)')
   .optional();
 
+// Validador de link de destino: acepta URL absoluta (https://...) o ruta interna
+// de la tienda que empiece con "/" (ej: /categoria/5, /producto/10). Vacío => sin link.
+const linkDestino = z
+  .string()
+  .max(500)
+  .refine(
+    (v) => v === '' || /^https?:\/\//i.test(v) || v.startsWith('/'),
+    'El link debe ser una URL (https://...) o una ruta interna que empiece con "/"',
+  )
+  .optional();
+
 // ─────────────────────────────────────────────
 // CREAR TIENDA
 // ─────────────────────────────────────────────
@@ -21,6 +32,8 @@ export const CrearTiendaSchema = z.object({
 
   titulo: z.string().max(200).trim().optional(),
   descripcion: z.string().max(2000).trim().optional(),
+  // Rubro del negocio (ej "indumentaria"). Define qué categorías ve/usa la tienda.
+  rubro: z.string().max(60).trim().optional(),
   plantillaId: z.number().int().positive().optional(),
   whatsapp: z.string().max(30).trim().optional(),
   instagram: z.string().max(100).trim().optional(),
@@ -76,8 +89,11 @@ export const ActualizarTemaSchema = z.object({
   colorAcento: colorHex,
   modoOscuro: z.boolean().optional(),
   navbarStyle: z.string().optional(),
-  navbarVariante: z.enum(['CLASICO', 'PILL']).optional(),
+  navbarVariante: z.enum(['CLASICO', 'PILL', 'BOUTIQUE']).optional(),
+  navbarColorTema: z.enum(['CLARO', 'OSCURO']).optional(),
+  cardVariante: z.enum(['CLASICO', 'MODERNO']).optional(),
   footerVariante: z.enum(['CENTRADO', 'COLUMNAS']).optional(),
+  botonForma: z.enum(['REDONDEADO', 'CUADRADO']).optional(),
   fuenteKit: z.enum(['MODERNO', 'EDITORIAL', 'IMPACTO', 'MINIMAL']).optional(),
   heroTitulo: z.string().max(200).optional(),
   heroSubtitulo: z.string().max(300).optional(),
@@ -85,6 +101,8 @@ export const ActualizarTemaSchema = z.object({
   cardMostrarPrecio: z.boolean().optional(),
   cardMostrarBadge: z.boolean().optional(),
   seccionesVisibles: SeccionesVisiblesSchema.optional(),
+  // Array ordenado de IDs de categoría a mostrar como filas en el home (máx 8).
+  homeCategoriaFilas: z.array(z.number().int().positive()).max(8).optional(),
   tipoSeccionHero: z.enum(['CARRUSEL', 'BANNER', 'HERO_FIJO', 'VIDEO', 'GALERIA']).optional(),
   intervaloCarrusel: z.number().int().min(1000).max(30000).optional(),
   // Banner promocional (entre destacados y productos)
@@ -157,7 +175,7 @@ export const AgregarImagenCarruselSchema = z.object({
   url: z.string().url('La URL de la imagen no es válida').max(500).optional(),
   titulo: z.string().max(200).trim().optional(),
   subtitulo: z.string().max(300).trim().optional(),
-  linkUrl: z.string().url().max(500).optional().or(z.literal('')),
+  linkUrl: linkDestino,
   orden: z.coerce.number().int().min(0).default(0),
   tipo: z.enum(['CARRUSEL', 'BANNER', 'HERO_FIJO', 'VIDEO']).default('CARRUSEL'),
   etiqueta: z.string().max(100).trim().optional(),
@@ -170,7 +188,7 @@ export type AgregarImagenCarruselDto = z.infer<typeof AgregarImagenCarruselSchem
 export const ActualizarImagenCarruselSchema = z.object({
   titulo: z.string().max(200).trim().optional(),
   subtitulo: z.string().max(300).trim().optional(),
-  linkUrl: z.string().url().max(500).optional().or(z.literal('')),
+  linkUrl: linkDestino,
   orden: z.coerce.number().int().min(0).optional(),
   activa: z.boolean().optional(),
   tipo: z.enum(['CARRUSEL', 'BANNER', 'HERO_FIJO', 'VIDEO']).optional(),

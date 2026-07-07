@@ -14,6 +14,7 @@ import {
 } from './productos.dto';
 import { ProductosRepository } from './productos.repository';
 import { cacheService } from '../../utils/cache';
+import { idsAncestros, idsDescendientes, rubroDeCategoria } from './categorias.tree';
 
 export class ProductosService {
   private repository: ProductosRepository;
@@ -470,23 +471,66 @@ export class ProductosService {
 
   // ── Categorías ──
 
-  async listarCategorias() {
-    return this.repository.listarCategorias();
+  // Owner: todas las categorías, filtradas por el RUBRO de su tienda (para clasificar
+  // productos solo dentro de su rubro). Si la tienda no tiene rubro (tiendas viejas),
+  // devuelve todas. Trae el árbol completo del rubro (no solo las que tienen productos).
+  async listarCategorias(usuarioId?: number) {
+    let rubro: string | null = null;
+    if (usuarioId) {
+      const tienda = await prisma.tienda.findFirst({ where: { usuarioId }, select: { rubro: true } });
+      rubro = tienda?.rubro ?? null;
+    }
+    return this.categoriasDelRubro(rubro);
   }
 
+  // Storefront: categorías de la tienda que tienen productos disponibles + sus ANCESTROS
+  // (para no romper el árbol de 3 niveles), filtradas por el rubro de la tienda.
   async listarCategoriasPorTienda(tiendaId: number) {
-    return prisma.categoria.findMany({
-      where: {
-        activa: true,
-        productos: {
-          some: {
-            tiendaId,
-            disponible: true,
-          },
-        },
-      },
+    const tienda = await prisma.tienda.findUnique({ where: { id: tiendaId }, select: { rubro: true } });
+
+    // Hojas con productos disponibles en esta tienda.
+    const conProductos = await prisma.categoria.findMany({
+      where: { activa: true, productos: { some: { tiendaId, disponible: true } } },
+      select: { id: true },
+    });
+
+    // Agregamos la cadena de ancestros de cada una para que el árbol quede completo.
+    const ids = new Set<number>();
+    for (const c of conProductos) {
+      ids.add(c.id);
+      for (const anc of await idsAncestros(c.id)) ids.add(anc);
+    }
+
+    if (ids.size === 0) return [];
+
+    const cats = await prisma.categoria.findMany({
+      where: { id: { in: [...ids] }, activa: true },
+      select: { id: true, nombre: true, slug: true, padreId: true },
       orderBy: { nombre: 'asc' },
     });
+
+    // Filtro por rubro (si la tienda tiene uno). rubro vive en la raíz.
+    if (!tienda?.rubro) return cats;
+    const filtradas: typeof cats = [];
+    for (const c of cats) {
+      if ((await rubroDeCategoria(c.id)) === tienda.rubro) filtradas.push(c);
+    }
+    return filtradas;
+  }
+
+  // Devuelve todas las categorías activas de un rubro (raíz + descendientes). Si rubro
+  // es null, devuelve todas. Usa el árbol cacheado para resolver la raíz del rubro.
+  private async categoriasDelRubro(rubro: string | null) {
+    const base = await prisma.categoria.findMany({
+      where: { activa: true },
+      select: { id: true, nombre: true, slug: true, padreId: true },
+      orderBy: { nombre: 'asc' },
+    });
+    if (!rubro) return base;
+    const raiz = await prisma.categoria.findFirst({ where: { rubro, padreId: null }, select: { id: true } });
+    if (!raiz) return base;
+    const idsRubro = new Set(await idsDescendientes(raiz.id));
+    return base.filter((c: (typeof base)[number]) => idsRubro.has(c.id));
   }
 
   // ── Excel ──

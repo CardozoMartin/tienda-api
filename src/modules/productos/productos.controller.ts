@@ -257,10 +257,11 @@ export class ProductosController {
 
   // ── Categorías (Para Owners) ──
 
-  //Controlador para listar todas las categorías disponibles. Requiere autenticación.
-  listarCategorias = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  //Controlador para listar las categorías del rubro de la tienda del owner. Requiere autenticación.
+  listarCategorias = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      responderOk(res, await this.service.listarCategorias(), 'Categorías obtenidas');
+      const { sub: usuarioId } = (req as RequestAutenticado).usuario;
+      responderOk(res, await this.service.listarCategorias(usuarioId), 'Categorías obtenidas');
     } catch (error) {
       next(error);
     }

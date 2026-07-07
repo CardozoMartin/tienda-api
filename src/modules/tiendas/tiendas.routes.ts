@@ -36,6 +36,9 @@ const controller = new TiendasController();
 // Directorio de tiendas
 router.get('/', validar(FiltrosTiendasSchema, 'query'), controller.listar);
 
+// Catálogo de rubros de negocio (para el onboarding). Path fijo → antes de /:slug.
+router.get('/rubros', controller.listarRubros);
+
 // Catálogo de métodos (Público/Owner)
 router.get('/metodos-pago', controller.listarMetodosPago);
 router.get('/metodos-entrega', controller.listarMetodosEntrega);

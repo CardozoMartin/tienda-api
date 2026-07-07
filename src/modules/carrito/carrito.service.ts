@@ -2,6 +2,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { ErrorApi } from '../../types';
 import { CarritoRepository } from './carrito.repository';
 import { ProductosRepository } from '../productos/productos.repository';
+import { PromocionesService } from '../promociones/promociones.service';
 
 interface AgregarItemDto {
   tiendaId: number;
@@ -26,6 +27,8 @@ interface EliminarItemDto {
 }
 
 export class CarritoService {
+  private readonly promocionesService = new PromocionesService();
+
   constructor(
     private readonly repository: CarritoRepository,
     private readonly productosRepository: ProductosRepository
@@ -66,8 +69,10 @@ export class CarritoService {
     }
 
     // 4. Snapshot del precio — se guarda el precio actual para que no cambie aunque el producto se actualice después
-
-    const precioBase = producto.precioOferta ?? producto.precio;
+    // Una promoción vigente sobre el producto PISA el precioOferta manual.
+    const descuentosVigentes = await this.promocionesService.descuentosVigentesPorProducto(tiendaId);
+    const descuento = descuentosVigentes.get(productoId) ?? null;
+    const precioBase = PromocionesService.precioEfectivo(producto, descuento);
     const precioExtra = varianteId
       ? (producto.variantes.find((v: any) => v.id === varianteId)?.precioExtra ?? new Decimal(0))
       : new Decimal(0);

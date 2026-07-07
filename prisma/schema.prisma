@@ -8,22 +8,22 @@ datasource db {
 }
 
 model Usuario {
-  id                    Int              @id @default(autoincrement())
-  nombre                String           @db.VarChar(100)
-  apellido              String           @db.VarChar(100)
-  email                 String           @unique @db.VarChar(180)
-  passwordHash          String           @db.VarChar(255)
-  rol                   RolUsuario       @default(CLIENT)
-  telefono              String?          @db.VarChar(30)
-  avatarUrl             String?          @db.VarChar(500)
-  emailVerificado       Boolean          @default(false)
-  tokenVerificacion     String?          @db.VarChar(100)
+  id                    Int           @id @default(autoincrement())
+  nombre                String        @db.VarChar(100)
+  apellido              String        @db.VarChar(100)
+  email                 String        @unique @db.VarChar(180)
+  passwordHash          String        @db.VarChar(255)
+  rol                   RolUsuario    @default(CLIENT)
+  telefono              String?       @db.VarChar(30)
+  avatarUrl             String?       @db.VarChar(500)
+  emailVerificado       Boolean       @default(false)
+  tokenVerificacion     String?       @db.VarChar(100)
   tokenVencVerificacion DateTime?
-  tokenResetPass        String?          @db.VarChar(100)
+  tokenResetPass        String?       @db.VarChar(100)
   tokenVencReset        DateTime?
-  activo                Boolean          @default(false)
-  creadoEn              DateTime         @default(now())
-  actualizadoEn         DateTime         @updatedAt
+  activo                Boolean       @default(false)
+  creadoEn              DateTime      @default(now())
+  actualizadoEn         DateTime      @updatedAt
   logBusquedas          LogBusqueda[]
   tienda                Tienda?
 
@@ -44,67 +44,71 @@ model PlantillaTienda {
 }
 
 model Tienda {
-  id             Int                   @id @default(autoincrement())
-  usuarioId      Int                   @unique
-  plantillaId    Int?
-  slug           String                @unique @db.VarChar(120)
+  id                    Int                   @id @default(autoincrement())
+  usuarioId             Int                   @unique
+  plantillaId           Int?
+  slug                  String                @unique @db.VarChar(120)
   // Dominio propio del comprador (ej: "www.mitienda.com"). Opcional y único.
   // Solo se sirve la tienda por este dominio cuando dominioVerificado = true.
-  dominioPersonalizado String?          @unique @db.VarChar(255)
-  dominioVerificado    Boolean          @default(false)
+  dominioPersonalizado  String?               @unique @db.VarChar(255)
+  dominioVerificado     Boolean               @default(false)
   // Código único que el dueño debe publicar como registro TXT en su DNS para probar la propiedad.
-  dominioTokenVerif    String?          @db.VarChar(100)
-  nombre         String                @db.VarChar(150)
-  titulo         String?               @db.VarChar(200)
-  descripcion    String?               @db.Text
-  logoUrl        String?               @db.VarChar(500)
-  bannerUrl      String?               @db.VarChar(500)
-  whatsapp       String?               @db.VarChar(30)
-  instagram      String?               @db.VarChar(100)
-  facebook       String?               @db.VarChar(100)
-  sitioWeb       String?               @db.VarChar(255)
-  pais           String?               @db.VarChar(80)
-  provincia      String?               @db.VarChar(80)
-  ciudad         String?               @db.VarChar(80)
+  dominioTokenVerif     String?               @db.VarChar(100)
+  nombre                String                @db.VarChar(150)
+  titulo                String?               @db.VarChar(200)
+  descripcion           String?               @db.Text
+  // Rubro del negocio elegido al crear la tienda (ej: "indumentaria"). Filtra qué
+  // categorías ve/usa la tienda. Nullable para tiendas creadas antes de esta feature.
+  rubro                 String?               @db.VarChar(60)
+  logoUrl               String?               @db.VarChar(500)
+  bannerUrl             String?               @db.VarChar(500)
+  whatsapp              String?               @db.VarChar(30)
+  instagram             String?               @db.VarChar(100)
+  facebook              String?               @db.VarChar(100)
+  sitioWeb              String?               @db.VarChar(255)
+  pais                  String?               @db.VarChar(80)
+  provincia             String?               @db.VarChar(80)
+  ciudad                String?               @db.VarChar(80)
   // Datos legales del vendedor (identificación del proveedor en e-commerce)
-  razonSocial    String?               @db.VarChar(200)
-  cuit           String?               @db.VarChar(20)
-  domicilioLegal String?               @db.VarChar(300)
+  razonSocial           String?               @db.VarChar(200)
+  cuit                  String?               @db.VarChar(20)
+  domicilioLegal        String?               @db.VarChar(300)
   // Configuración de email marketing (cada tienda usa su propio proveedor / credenciales).
-  emailProveedor   String?             @db.VarChar(30)  // "smtp" | "brevo" | ...
-  emailRemitente   String?             @db.VarChar(180) // desde qué dirección se envía
-  emailRemitenteNombre String?         @db.VarChar(120) // nombre visible del remitente
-  emailHost        String?             @db.VarChar(180) // host SMTP (ej: smtp.gmail.com)
-  emailPort        Int?                                 // puerto SMTP (ej: 587)
-  emailUsuario     String?             @db.VarChar(180) // usuario SMTP
-  emailCredencial  String?             @db.Text         // credencial CIFRADA (nunca en texto plano)
-  emailVerificadoConfig Boolean        @default(false)  // si ya se validó que las credenciales funcionan
-  activa         Boolean               @default(true)
-  publica        Boolean               @default(true)
-  vistas         Int                   @default(0)
-  creadoEn       DateTime              @default(now())
-  actualizadoEn  DateTime              @updatedAt
-  carritos       Carrito[]
-  carrusel       CarruselImagen[]
-  categoriasDestacadas CategoriaDestacada[]
-  clientes       ClienteTienda[]
-  metodosEntrega MetodoEntregaTienda[]
-  metodosPago    MetodoPagoTienda[]
-  pedidos        Pedido[]
-  popups         TiendaPopup[]
-  productos      Producto[]
-  resenas        ResenaTienda[]
-  aboutUs        TiendaAboutUs?
-  marqueeItems   TiendaMarqueeItem[]
-  visitas_log    VisitaTienda[]
-  cupones        Cupon[]
-  campanas       Campana[]
-  guiasTalles    GuiaTalles[]
-  revocaciones   SolicitudRevocacion[]
-  paginasLegales PaginaLegal[]
-  temaConfig     TiendaTemaConfig?
-  plantilla      PlantillaTienda?      @relation(fields: [plantillaId], references: [id])
-  usuario        Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  emailProveedor        String?               @db.VarChar(30) // "smtp" | "brevo" | ...
+  emailRemitente        String?               @db.VarChar(180) // desde qué dirección se envía
+  emailRemitenteNombre  String?               @db.VarChar(120) // nombre visible del remitente
+  emailHost             String?               @db.VarChar(180) // host SMTP (ej: smtp.gmail.com)
+  emailPort             Int? // puerto SMTP (ej: 587)
+  emailUsuario          String?               @db.VarChar(180) // usuario SMTP
+  emailCredencial       String?               @db.Text // credencial CIFRADA (nunca en texto plano)
+  emailVerificadoConfig Boolean               @default(false) // si ya se validó que las credenciales funcionan
+  activa                Boolean               @default(true)
+  publica               Boolean               @default(true)
+  vistas                Int                   @default(0)
+  creadoEn              DateTime              @default(now())
+  actualizadoEn         DateTime              @updatedAt
+  carritos              Carrito[]
+  carrusel              CarruselImagen[]
+  categoriasDestacadas  CategoriaDestacada[]
+  clientes              ClienteTienda[]
+  metodosEntrega        MetodoEntregaTienda[]
+  metodosPago           MetodoPagoTienda[]
+  pedidos               Pedido[]
+  popups                TiendaPopup[]
+  productos             Producto[]
+  resenas               ResenaTienda[]
+  aboutUs               TiendaAboutUs?
+  marqueeItems          TiendaMarqueeItem[]
+  visitas_log           VisitaTienda[]
+  cupones               Cupon[]
+  promociones           Promocion[]
+  campanas              Campana[]
+  guiasTalles           GuiaTalles[]
+  revocaciones          SolicitudRevocacion[]
+  paginasLegales        PaginaLegal[]
+  temaConfig            TiendaTemaConfig?
+  plantilla             PlantillaTienda?      @relation(fields: [plantillaId], references: [id])
+  usuario               Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId])
   @@index([plantillaId])
@@ -114,7 +118,7 @@ model Tienda {
 model VisitaTienda {
   id         Int      @id @default(autoincrement())
   tiendaId   Int
-  productoId Int?     // si la visita fue a un producto puntual
+  productoId Int? // si la visita fue a un producto puntual
   sessionId  String?  @db.VarChar(100)
   creadoEn   DateTime @default(now())
   tienda     Tienda   @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
@@ -125,32 +129,37 @@ model VisitaTienda {
 }
 
 model TiendaTemaConfig {
-  tiendaId          Int              @id
-  colorAcento       String?          @db.Char(7)
-  navbarStyle       NavbarStyle      @default(TRANSPARENT)
-  navbarVariante    NavbarVariante   @default(CLASICO)
-  footerVariante    FooterVariante   @default(CENTRADO)
-  fuenteKit         FuenteKit        @default(MODERNO)
-  heroTitulo        String?          @db.VarChar(200)
-  heroSubtitulo     String?          @db.VarChar(300)
-  heroCtaTexto      String?          @db.VarChar(100)
-  cardMostrarPrecio Boolean          @default(true)
-  cardMostrarBadge  Boolean          @default(true)
-  seccionesVisibles Json?
-  tipoSeccionHero      TipoSeccionHero  @default(HERO_FIJO)
-  intervaloCarrusel    Int              @default(5000)
-  bannerPromoActivo    Boolean          @default(false)
-  bannerPromoTitulo    String?          @db.VarChar(200)
-  bannerPromoSubtitulo String?          @db.VarChar(300)
-  bannerPromoImagenUrl String?          @db.VarChar(500)
-  bannerPromoLinkUrl   String?          @db.VarChar(500)
-  bannerPromoCtaTexto  String?          @db.VarChar(100)
-  categoriasDestacadasActivas  Boolean                 @default(false)
-  categoriasDestacadasPosicion PosicionCategoriasDest  @default(ANTES)
-  creadoEn             DateTime         @default(now())
-  actualizadoEn     DateTime         @updatedAt
-  modoOscuro        Boolean          @default(true)
-  tienda            Tienda           @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  tiendaId                     Int                    @id
+  colorAcento                  String?                @db.Char(7)
+  navbarStyle                  NavbarStyle            @default(TRANSPARENT)
+  navbarVariante               NavbarVariante         @default(CLASICO)
+  navbarColorTema              NavbarColorTema        @default(OSCURO)
+  cardVariante                 CardVariante           @default(CLASICO)
+  footerVariante               FooterVariante         @default(CENTRADO)
+  botonForma                   BotonForma             @default(REDONDEADO)
+  fuenteKit                    FuenteKit              @default(MODERNO)
+  heroTitulo                   String?                @db.VarChar(200)
+  heroSubtitulo                String?                @db.VarChar(300)
+  heroCtaTexto                 String?                @db.VarChar(100)
+  cardMostrarPrecio            Boolean                @default(true)
+  cardMostrarBadge             Boolean                @default(true)
+  seccionesVisibles            Json?
+  // Filas por categoría en el home: array ordenado de IDs de categoría (número[]).
+  homeCategoriaFilas           Json?
+  tipoSeccionHero              TipoSeccionHero        @default(HERO_FIJO)
+  intervaloCarrusel            Int                    @default(5000)
+  bannerPromoActivo            Boolean                @default(false)
+  bannerPromoTitulo            String?                @db.VarChar(200)
+  bannerPromoSubtitulo         String?                @db.VarChar(300)
+  bannerPromoImagenUrl         String?                @db.VarChar(500)
+  bannerPromoLinkUrl           String?                @db.VarChar(500)
+  bannerPromoCtaTexto          String?                @db.VarChar(100)
+  categoriasDestacadasActivas  Boolean                @default(false)
+  categoriasDestacadasPosicion PosicionCategoriasDest @default(ANTES)
+  creadoEn                     DateTime               @default(now())
+  actualizadoEn                DateTime               @updatedAt
+  modoOscuro                   Boolean                @default(true)
+  tienda                       Tienda                 @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
 
   @@map("tienda_tema_config")
 }
@@ -210,7 +219,7 @@ model MetodoPagoTienda {
   tiendaId     Int
   metodoPagoId Int
   detalle      String?    @db.VarChar(255)
-  configExtra  Json?      // Configuración específica por tipo: { mpAccessToken, mpPublicKey, cbu, alias, ... }
+  configExtra  Json? // Configuración específica por tipo: { mpAccessToken, mpPublicKey, cbu, alias, ... }
   metodoPago   MetodoPago @relation(fields: [metodoPagoId], references: [id])
   tienda       Tienda     @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
 
@@ -224,9 +233,9 @@ model MetodoEntregaTienda {
   metodoEntregaId Int
   zonaCobertura   String?       @db.VarChar(255)
   detalle         String?       @db.VarChar(255)
-  costo           Decimal?      @db.Decimal(10, 2)  // Precio del envío (null = gratis)
-  costoGratis     Decimal?      @db.Decimal(10, 2)  // Monto mínimo para envío gratis
-  tiempoEstimado  String?       @db.VarChar(100)    // Ej: "2-3 días hábiles"
+  costo           Decimal?      @db.Decimal(10, 2) // Precio del envío (null = gratis)
+  costoGratis     Decimal?      @db.Decimal(10, 2) // Monto mínimo para envío gratis
+  tiempoEstimado  String?       @db.VarChar(100) // Ej: "2-3 días hábiles"
   metodoEntrega   MetodoEntrega @relation(fields: [metodoEntregaId], references: [id])
   tienda          Tienda        @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
 
@@ -236,19 +245,19 @@ model MetodoEntregaTienda {
 }
 
 model CarruselImagen {
-  id          Int              @id @default(autoincrement())
-  tiendaId    Int
-  url         String           @db.VarChar(500)
-  titulo      String?          @db.VarChar(200)
-  subtitulo   String?          @db.VarChar(300)
-  linkUrl     String?          @db.VarChar(500)
-  orden       Int              @default(0)
-  activa      Boolean          @default(true)
-  tipo        TipoSeccionHero  @default(CARRUSEL)
-  etiqueta    String?          @db.VarChar(100)
-  fechaDesde  DateTime?
-  fechaHasta  DateTime?
-  tienda      Tienda           @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  id         Int             @id @default(autoincrement())
+  tiendaId   Int
+  url        String          @db.VarChar(500)
+  titulo     String?         @db.VarChar(200)
+  subtitulo  String?         @db.VarChar(300)
+  linkUrl    String?         @db.VarChar(500)
+  orden      Int             @default(0)
+  activa     Boolean         @default(true)
+  tipo       TipoSeccionHero @default(CARRUSEL)
+  etiqueta   String?         @db.VarChar(100)
+  fechaDesde DateTime?
+  fechaHasta DateTime?
+  tienda     Tienda          @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
 
   @@index([tiendaId])
   @@map("carrusel_imagenes")
@@ -275,12 +284,17 @@ model Categoria {
   nombre    String      @db.VarChar(100)
   slug      String      @unique @db.VarChar(120)
   iconoUrl  String?     @db.VarChar(500)
+  // Rubro del negocio al que pertenece esta categoría (ej: "indumentaria").
+  // Se setea solo en las categorías RAÍZ (padreId = null); los descendientes lo heredan
+  // implícitamente por su raíz. Sirve para filtrar qué categorías ve cada tienda según su rubro.
+  rubro     String?     @db.VarChar(60)
   activa    Boolean     @default(true)
   padre     Categoria?  @relation("CategoriaHijos", fields: [padreId], references: [id])
   hijos     Categoria[] @relation("CategoriaHijos")
   productos Producto[]
 
   @@index([padreId])
+  @@index([rubro])
   @@map("categorias")
 }
 
@@ -293,32 +307,33 @@ model Tag {
 }
 
 model Producto {
-  id                 Int                @id @default(autoincrement())
+  id                 Int                 @id @default(autoincrement())
   tiendaId           Int
   categoriaId        Int?
-  nombre             String             @db.VarChar(200)
-  descripcion        String?            @db.Text
-  precio             Decimal            @db.Decimal(12, 2)
-  precioOferta       Decimal?           @db.Decimal(12, 2)
-  precioAnterior     Decimal?           @db.Decimal(12, 2)
-  moneda             String             @default("ARS") @db.Char(3)
-  imagenPrincipalUrl String?            @db.VarChar(500)
-  disponible         Boolean            @default(true)
-  destacado          Boolean            @default(false)
-  vistas             Int                @default(0)
-  stock              Int                @default(0)
-  creadoEn           DateTime           @default(now())
-  actualizadoEn      DateTime           @updatedAt
+  nombre             String              @db.VarChar(200)
+  descripcion        String?             @db.Text
+  precio             Decimal             @db.Decimal(12, 2)
+  precioOferta       Decimal?            @db.Decimal(12, 2)
+  precioAnterior     Decimal?            @db.Decimal(12, 2)
+  moneda             String              @default("ARS") @db.Char(3)
+  imagenPrincipalUrl String?             @db.VarChar(500)
+  disponible         Boolean             @default(true)
+  destacado          Boolean             @default(false)
+  vistas             Int                 @default(0)
+  stock              Int                 @default(0)
+  creadoEn           DateTime            @default(now())
+  actualizadoEn      DateTime            @updatedAt
   carritoItems       CarritoItem[]
   pedidoItems        PedidoItem[]
   imagenes           ProductoImagen[]
   variantes          ProductoVariante[]
   guiaTallesId       Int?
-  categoria          Categoria?         @relation(fields: [categoriaId], references: [id])
-  tienda             Tienda             @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
-  guiaTalles         GuiaTalles?        @relation(fields: [guiaTallesId], references: [id], onDelete: SetNull)
+  categoria          Categoria?          @relation(fields: [categoriaId], references: [id])
+  tienda             Tienda              @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  guiaTalles         GuiaTalles?         @relation(fields: [guiaTallesId], references: [id], onDelete: SetNull)
   resenas            ResenaProducto[]
-  tags               Tag[]              @relation("productototag")
+  tags               Tag[]               @relation("productototag")
+  promociones        PromocionProducto[]
 
   @@index([tiendaId])
   @@index([categoriaId])
@@ -513,46 +528,46 @@ model CarritoItem {
 }
 
 model Pedido {
-  id                Int            @id @default(autoincrement())
-  tiendaId          Int
-  clienteId         Int?
-  compradorNombre   String         @db.VarChar(150)
-  compradorEmail    String         @db.VarChar(180)
-  compradorTel      String         @db.VarChar(30)
-  metodoEntregaId   Int
-  direccionCalle    String         @db.VarChar(150)
-  direccionNumero   String?        @db.VarChar(20)
-  direccionPiso     String?        @db.VarChar(20)
-  direccionCiudad   String         @db.VarChar(80)
-  direccionProv     String         @db.VarChar(80)
-  direccionCP       String?        @db.VarChar(20)
-  direccionNotas    String?        @db.VarChar(300)
-  metodoPagoId      Int
-  subtotal          Decimal        @db.Decimal(12, 2)
-  total             Decimal        @db.Decimal(12, 2)
-  moneda            String         @default("ARS") @db.Char(3)
-  estado            EstadoPedido   @default(PENDIENTE)
-  estadoPago        EstadoPago     @default(PENDIENTE)
-  mpPreferenciaId   String?        @db.VarChar(255)
-  mpPaymentId       String?        @db.VarChar(255)
-  notasCliente      String?        @db.Text
-  notasOwner        String?        @db.Text
-  costoEnvio        Decimal        @default(0.00) @db.Decimal(12, 2)
-  cuponId           Int?
-  cuponCodigo       String?        @db.VarChar(50)
-  descuento         Decimal        @default(0.00) @db.Decimal(12, 2)
-  nroSeguimiento    String?        @db.VarChar(100)
-  urlSeguimiento    String?        @db.VarChar(500)
-  creadoEn          DateTime       @default(now())
-  actualizadoEn     DateTime       @updatedAt
-  items             PedidoItem[]
-  logs              LogPedido[]
-  revocaciones      SolicitudRevocacion[]
-  cliente           ClienteTienda? @relation(fields: [clienteId], references: [id])
-  metodoEntrega     MetodoEntrega  @relation(fields: [metodoEntregaId], references: [id])
-  metodoPago        MetodoPago     @relation(fields: [metodoPagoId], references: [id])
-  tienda            Tienda         @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
-  cupon             Cupon?         @relation(fields: [cuponId], references: [id])
+  id              Int                   @id @default(autoincrement())
+  tiendaId        Int
+  clienteId       Int?
+  compradorNombre String                @db.VarChar(150)
+  compradorEmail  String                @db.VarChar(180)
+  compradorTel    String                @db.VarChar(30)
+  metodoEntregaId Int
+  direccionCalle  String                @db.VarChar(150)
+  direccionNumero String?               @db.VarChar(20)
+  direccionPiso   String?               @db.VarChar(20)
+  direccionCiudad String                @db.VarChar(80)
+  direccionProv   String                @db.VarChar(80)
+  direccionCP     String?               @db.VarChar(20)
+  direccionNotas  String?               @db.VarChar(300)
+  metodoPagoId    Int
+  subtotal        Decimal               @db.Decimal(12, 2)
+  total           Decimal               @db.Decimal(12, 2)
+  moneda          String                @default("ARS") @db.Char(3)
+  estado          EstadoPedido          @default(PENDIENTE)
+  estadoPago      EstadoPago            @default(PENDIENTE)
+  mpPreferenciaId String?               @db.VarChar(255)
+  mpPaymentId     String?               @db.VarChar(255)
+  notasCliente    String?               @db.Text
+  notasOwner      String?               @db.Text
+  costoEnvio      Decimal               @default(0.00) @db.Decimal(12, 2)
+  cuponId         Int?
+  cuponCodigo     String?               @db.VarChar(50)
+  descuento       Decimal               @default(0.00) @db.Decimal(12, 2)
+  nroSeguimiento  String?               @db.VarChar(100)
+  urlSeguimiento  String?               @db.VarChar(500)
+  creadoEn        DateTime              @default(now())
+  actualizadoEn   DateTime              @updatedAt
+  items           PedidoItem[]
+  logs            LogPedido[]
+  revocaciones    SolicitudRevocacion[]
+  cliente         ClienteTienda?        @relation(fields: [clienteId], references: [id])
+  metodoEntrega   MetodoEntrega         @relation(fields: [metodoEntregaId], references: [id])
+  metodoPago      MetodoPago            @relation(fields: [metodoPagoId], references: [id])
+  tienda          Tienda                @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  cupon           Cupon?                @relation(fields: [cuponId], references: [id])
 
   @@index([tiendaId])
   @@index([clienteId])
@@ -573,11 +588,11 @@ model Cupon {
   tiendaId      Int
   codigo        String        @db.VarChar(50)
   tipoDescuento TipoDescuento @default(PORCENTAJE)
-  valor         Decimal       @db.Decimal(12, 2)   // % (0-100) o monto fijo según tipo
-  minCompra     Decimal?      @db.Decimal(12, 2)   // monto mínimo de compra para aplicar
+  valor         Decimal       @db.Decimal(12, 2) // % (0-100) o monto fijo según tipo
+  minCompra     Decimal?      @db.Decimal(12, 2) // monto mínimo de compra para aplicar
   validoDesde   DateTime?
   validoHasta   DateTime?
-  usoMaximo     Int?          // null = ilimitado
+  usoMaximo     Int? // null = ilimitado
   usoActual     Int           @default(0)
   activo        Boolean       @default(true)
   creadoEn      DateTime      @default(now())
@@ -590,24 +605,69 @@ model Cupon {
   @@map("cupones")
 }
 
+// Promoción/colección de ofertas que agrupa productos y les aplica un descuento.
+// A diferencia del Cupon (descuento a nivel carrito por código), la promoción
+// afecta directamente el precio de los productos asociados mientras está vigente,
+// y es navegable: si está activa aparece como link en el navbar (por su slug/nombre).
+// El descuento puede ser GLOBAL (tipoDescuento/valor en la promo) y/o POR PRODUCTO
+// (en PromocionProducto). Regla: si el producto tiene el suyo, gana sobre el global.
+// La promo vigente PISA el precioOferta manual del producto.
+model Promocion {
+  id              Int                 @id @default(autoincrement())
+  tiendaId        Int
+  nombre          String              @db.VarChar(150)
+  slug            String              @db.VarChar(160) // para el link público /ofertas/:slug
+  // Descuento global opcional: si está, se aplica a los productos que no tengan uno propio.
+  tipoDescuento   TipoDescuento?
+  valor           Decimal?            @db.Decimal(12, 2) // % (0-100) o monto fijo según tipo
+  validoDesde     DateTime?
+  validoHasta     DateTime?
+  activa          Boolean             @default(true)
+  bannerTitulo    String?             @db.VarChar(200)
+  bannerImagenUrl String?             @db.VarChar(500)
+  creadoEn        DateTime            @default(now())
+  actualizadoEn   DateTime            @updatedAt
+  tienda          Tienda              @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  productos       PromocionProducto[]
+
+  @@unique([tiendaId, slug])
+  @@index([tiendaId])
+  @@map("promociones")
+}
+
+model PromocionProducto {
+  promocionId   Int
+  productoId    Int
+  // Descuento propio del producto dentro de esta promo (opcional).
+  // Si está seteado, GANA sobre el descuento global de la promo.
+  tipoDescuento TipoDescuento?
+  valor         Decimal?       @db.Decimal(12, 2)
+  promocion     Promocion      @relation(fields: [promocionId], references: [id], onDelete: Cascade)
+  producto      Producto       @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@id([promocionId, productoId])
+  @@index([productoId])
+  @@map("promocion_productos")
+}
+
 // Solicitud de revocación de compra (Botón de arrepentimiento — Res. 424/2020, art. 34 LDC).
 // Se puede crear sin registro previo. Al crearse genera un código de constancia inmediato.
 model SolicitudRevocacion {
-  id             Int                @id @default(autoincrement())
+  id             Int              @id @default(autoincrement())
   tiendaId       Int
-  codigo         String             @unique @db.VarChar(20) // constancia, ej: ARR-3F7K9Q
-  pedidoId       Int?               // opcional: puede no recordar el nº
-  nroPedidoTexto String?            @db.VarChar(50)  // nº que el cliente escribió a mano
-  nombre         String             @db.VarChar(150)
-  email          String             @db.VarChar(180)
-  telefono       String?            @db.VarChar(30)
-  motivo         String?            @db.Text
-  estado         EstadoRevocacion   @default(PENDIENTE)
-  respuestaOwner String?            @db.Text
-  creadoEn       DateTime           @default(now())
-  actualizadoEn  DateTime           @updatedAt
-  tienda         Tienda             @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
-  pedido         Pedido?            @relation(fields: [pedidoId], references: [id])
+  codigo         String           @unique @db.VarChar(20) // constancia, ej: ARR-3F7K9Q
+  pedidoId       Int? // opcional: puede no recordar el nº
+  nroPedidoTexto String?          @db.VarChar(50) // nº que el cliente escribió a mano
+  nombre         String           @db.VarChar(150)
+  email          String           @db.VarChar(180)
+  telefono       String?          @db.VarChar(30)
+  motivo         String?          @db.Text
+  estado         EstadoRevocacion @default(PENDIENTE)
+  respuestaOwner String?          @db.Text
+  creadoEn       DateTime         @default(now())
+  actualizadoEn  DateTime         @updatedAt
+  tienda         Tienda           @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  pedido         Pedido?          @relation(fields: [pedidoId], references: [id])
 
   @@index([tiendaId])
   @@index([pedidoId], map: "solicitudes_revocacion_pedidoId_fkey")
@@ -624,15 +684,15 @@ enum EstadoRevocacion {
 // Páginas legales editables por tienda (T&C, privacidad, cambios y devoluciones).
 // Una fila por (tienda, tipo). El contenido es texto plano con saltos de línea.
 model PaginaLegal {
-  id            Int            @id @default(autoincrement())
+  id            Int             @id @default(autoincrement())
   tiendaId      Int
   tipo          TipoPaginaLegal
-  titulo        String         @db.VarChar(150)
-  contenido     String         @db.LongText
-  activa        Boolean        @default(true)
-  creadoEn      DateTime       @default(now())
-  actualizadoEn DateTime       @updatedAt
-  tienda        Tienda         @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  titulo        String          @db.VarChar(150)
+  contenido     String          @db.LongText
+  activa        Boolean         @default(true)
+  creadoEn      DateTime        @default(now())
+  actualizadoEn DateTime        @updatedAt
+  tienda        Tienda          @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
 
   @@unique([tiendaId, tipo])
   @@index([tiendaId])
@@ -667,15 +727,15 @@ model PedidoItem {
 }
 
 model LogPedido {
-  id              Int          @id @default(autoincrement())
-  pedidoId        Int
-  estadoAnterior  EstadoPedido?
-  estadoNuevo     EstadoPedido
-  notas           String?      @db.Text
-  usuarioId       Int?         // Si fue cambiado por el owner/admin
-  clienteId       Int?         // Si fue cambiado por el cliente (ej. cancelo)
-  fecha           DateTime     @default(now())
-  pedido          Pedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  id             Int           @id @default(autoincrement())
+  pedidoId       Int
+  estadoAnterior EstadoPedido?
+  estadoNuevo    EstadoPedido
+  notas          String?       @db.Text
+  usuarioId      Int? // Si fue cambiado por el owner/admin
+  clienteId      Int? // Si fue cambiado por el cliente (ej. cancelo)
+  fecha          DateTime      @default(now())
+  pedido         Pedido        @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
 
   @@index([pedidoId])
   @@map("log_pedidos")
@@ -697,12 +757,31 @@ enum NavbarStyle {
 enum NavbarVariante {
   CLASICO
   PILL
+  BOUTIQUE
+}
+
+// Esquema de color del navbar: fondo claro (letras oscuras) u oscuro (letras claras).
+enum NavbarColorTema {
+  CLARO
+  OSCURO
+}
+
+// Diseño de la tarjeta de producto.
+enum CardVariante {
+  CLASICO
+  MODERNO
 }
 
 // Diseño/layout del footer.
 enum FooterVariante {
   CENTRADO
   COLUMNAS
+}
+
+// Forma de los botones de acción: píldora (redondeado) o esquinas cuadradas.
+enum BotonForma {
+  REDONDEADO
+  CUADRADO
 }
 
 enum PosicionCategoriasDest {
@@ -734,23 +813,23 @@ enum TipoSeccionHero {
 }
 
 model TiendaPopup {
-  id            Int           @id @default(autoincrement())
-  tiendaId      Int
-  tipo          TipoPopup     @default(INFO)
-  activo        Boolean       @default(false)
-  titulo        String        @db.VarChar(200)
-  mensaje       String?       @db.Text
-  imagenUrl     String?       @db.VarChar(500)
-  ctaTexto      String?       @db.VarChar(100)
-  ctaUrl        String?       @db.VarChar(500)
-  colorFondo    String?       @db.Char(7)
-  delay         Int           @default(2)
-  frecuencia    FrecuenciaPopup @default(SIEMPRE)
-  codigoDesc    String?       @db.VarChar(50)
+  id             Int             @id @default(autoincrement())
+  tiendaId       Int
+  tipo           TipoPopup       @default(INFO)
+  activo         Boolean         @default(false)
+  titulo         String          @db.VarChar(200)
+  mensaje        String?         @db.Text
+  imagenUrl      String?         @db.VarChar(500)
+  ctaTexto       String?         @db.VarChar(100)
+  ctaUrl         String?         @db.VarChar(500)
+  colorFondo     String?         @db.Char(7)
+  delay          Int             @default(2)
+  frecuencia     FrecuenciaPopup @default(SIEMPRE)
+  codigoDesc     String?         @db.VarChar(50)
   porcentajeDesc Int?
-  creadoEn      DateTime      @default(now())
-  actualizadoEn DateTime      @updatedAt
-  tienda        Tienda        @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  creadoEn       DateTime        @default(now())
+  actualizadoEn  DateTime        @updatedAt
+  tienda         Tienda          @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
 
   @@index([tiendaId])
   @@map("tienda_popups")
@@ -787,16 +866,16 @@ enum EstadoPago {
 
 enum SegmentoCampana {
   CLIENTES_REGISTRADOS // todos los ClienteTienda verificados y activos
-  COMPRADORES          // emails que hicieron al menos un pedido
-  AMBOS                // registrados + compradores (deduplicado)
+  COMPRADORES // emails que hicieron al menos un pedido
+  AMBOS // registrados + compradores (deduplicado)
 }
 
 enum EstadoCampana {
-  BORRADOR   // creada, todavía no se mandó
-  ENCOLADA   // lista para procesar por el worker
-  ENVIANDO   // el worker está procesando sus envíos
-  ENVIADA    // todos los envíos procesados
-  FALLIDA    // no se pudo (ej. config de email inválida)
+  BORRADOR // creada, todavía no se mandó
+  ENCOLADA // lista para procesar por el worker
+  ENVIANDO // el worker está procesando sus envíos
+  ENVIADA // todos los envíos procesados
+  FALLIDA // no se pudo (ej. config de email inválida)
 }
 
 enum EstadoEnvio {
@@ -830,16 +909,16 @@ model Campana {
 }
 
 model CampanaEnvio {
-  id         Int         @id @default(autoincrement())
-  campanaId  Int
-  email      String      @db.VarChar(180)
-  nombre     String?     @db.VarChar(150)
-  estado     EstadoEnvio @default(PENDIENTE)
-  error      String?     @db.VarChar(500)
-  intentos   Int         @default(0)
-  enviadoEn  DateTime?
-  creadoEn   DateTime    @default(now())
-  campana    Campana     @relation(fields: [campanaId], references: [id], onDelete: Cascade)
+  id        Int         @id @default(autoincrement())
+  campanaId Int
+  email     String      @db.VarChar(180)
+  nombre    String?     @db.VarChar(150)
+  estado    EstadoEnvio @default(PENDIENTE)
+  error     String?     @db.VarChar(500)
+  intentos  Int         @default(0)
+  enviadoEn DateTime?
+  creadoEn  DateTime    @default(now())
+  campana   Campana     @relation(fields: [campanaId], references: [id], onDelete: Cascade)
 
   @@index([campanaId, estado])
   @@map("campana_envios")

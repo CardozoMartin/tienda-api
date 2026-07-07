@@ -1,6 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { calcularSkip } from '../../utils/helpers';
 import { FiltrosProductosDto } from './productos.dto';
+import { idsDescendientes } from './categorias.tree';
 
 type WhereInput = Record<string, any>;
 
@@ -48,6 +49,13 @@ export class ProductosRepository {
     filtros: FiltrosProductosDto,
     soloPublicos: boolean = true
   ): Promise<{ datos: unknown[]; total: number }> {
+    // Filtro por categoría RECURSIVO: al filtrar por una categoría traemos también
+    // los productos de todos sus descendientes (N niveles). Para una hoja devuelve
+    // [id] → mismo comportamiento que antes. Resuelto contra el árbol cacheado.
+    const idsCategoria = filtros.categoriaId
+      ? await idsDescendientes(filtros.categoriaId)
+      : null;
+
     // Construimos el where dinámicamente según los filtros recibidos
     const where: WhereInput = {
       tiendaId,
@@ -55,12 +63,7 @@ export class ProductosRepository {
       // Filtro de disponible solo aplica para el owner (soloPublicos = false)
       ...(filtros.disponible !== undefined && !soloPublicos && { disponible: filtros.disponible }),
       ...(filtros.destacado !== undefined && { destacado: filtros.destacado }),
-      ...(filtros.categoriaId && {
-        OR: [
-          { categoriaId: filtros.categoriaId },
-          { categoria: { padreId: filtros.categoriaId } },
-        ],
-      }),
+      ...(idsCategoria && { categoriaId: { in: idsCategoria } }),
       // Búsqueda por nombre o descripción
       ...(filtros.busqueda && {
         OR: [

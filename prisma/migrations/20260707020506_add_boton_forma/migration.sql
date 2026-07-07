@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `tienda_tema_config` ADD COLUMN `botonForma` ENUM('REDONDEADO', 'CUADRADO') NOT NULL DEFAULT 'REDONDEADO';
