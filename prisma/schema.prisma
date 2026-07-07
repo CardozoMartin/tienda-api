@@ -136,6 +136,7 @@ model TiendaTemaConfig {
   navbarColorTema              NavbarColorTema        @default(OSCURO)
   cardVariante                 CardVariante           @default(CLASICO)
   footerVariante               FooterVariante         @default(CENTRADO)
+  botonForma                   BotonForma             @default(REDONDEADO)
   fuenteKit                    FuenteKit              @default(MODERNO)
   heroTitulo                   String?                @db.VarChar(200)
   heroSubtitulo                String?                @db.VarChar(300)
@@ -756,6 +757,7 @@ enum NavbarStyle {
 enum NavbarVariante {
   CLASICO
   PILL
+  BOUTIQUE
 }
 
 // Esquema de color del navbar: fondo claro (letras oscuras) u oscuro (letras claras).
@@ -774,6 +776,12 @@ enum CardVariante {
 enum FooterVariante {
   CENTRADO
   COLUMNAS
+}
+
+// Forma de los botones de acción: píldora (redondeado) o esquinas cuadradas.
+enum BotonForma {
+  REDONDEADO
+  CUADRADO
 }
 
 enum PosicionCategoriasDest {
