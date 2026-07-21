@@ -166,11 +166,21 @@ export class ProductosService {
   /**
    * Actualiza un producto verificando que pertenezca a la tienda del owner.
    */
-  async actualizar(usuarioId: number, productoId: number, datos: ActualizarProductoDto) {
+  async actualizar(
+    usuarioId: number,
+    productoId: number,
+    datos: ActualizarProductoDto,
+    imagenFile?: Express.Multer.File
+  ) {
     const tienda = await this.obtenerTiendaOFallar(usuarioId);
     const productoActual = await this.verificarProductoOFallar(productoId, tienda.id);
 
     const sanitizedData = { ...datos } as any;
+
+    // Si viene un archivo nuevo, lo subimos a Cloudinary y reemplazamos la imagen principal
+    if (imagenFile) {
+      sanitizedData.imagenPrincipalUrl = await uploadImageToCloudinary(imagenFile.buffer);
+    }
 
     if (sanitizedData.nombre) {
       sanitizedData.nombre = sanitizedData.nombre.trim();

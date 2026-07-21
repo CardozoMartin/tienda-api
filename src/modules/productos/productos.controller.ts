@@ -115,6 +115,7 @@ export class ProductosController {
     try {
       const { sub: usuarioId } = (req as RequestAutenticado).usuario;
       const productoId = parseInt(req.params['productoId'] as string, 10);
+      const file = (req as any).file as Express.Multer.File | undefined;
 
       const body = { ...req.body };
       if (body.precioOferta === '') body.precioOferta = null;
@@ -123,7 +124,8 @@ export class ProductosController {
       const producto = await this.service.actualizar(
         usuarioId,
         productoId,
-        body as ActualizarProductoDto
+        body as ActualizarProductoDto,
+        file
       );
       responderOk(res, producto, 'Producto actualizado exitosamente');
     } catch (error) {

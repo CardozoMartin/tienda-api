@@ -758,6 +758,7 @@ enum NavbarVariante {
   CLASICO
   PILL
   BOUTIQUE
+  BRASILIA
 }
 
 // Esquema de color del navbar: fondo claro (letras oscuras) u oscuro (letras claras).
@@ -770,12 +771,14 @@ enum NavbarColorTema {
 enum CardVariante {
   CLASICO
   MODERNO
+  BRASILIA
 }
 
 // Diseño/layout del footer.
 enum FooterVariante {
   CENTRADO
   COLUMNAS
+  BRASILIA
 }
 
 // Forma de los botones de acción: píldora (redondeado) o esquinas cuadradas.
@@ -794,6 +797,7 @@ enum FuenteKit {
   EDITORIAL
   IMPACTO
   MINIMAL
+  BRASILIA
 }
 
 enum EstadoPedido {
@@ -810,6 +814,7 @@ enum TipoSeccionHero {
   HERO_FIJO
   VIDEO
   GALERIA
+  BRASILIA
 }
 
 model TiendaPopup {

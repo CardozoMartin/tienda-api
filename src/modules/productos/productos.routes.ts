@@ -76,6 +76,7 @@ misProductosRouter.get('/:productoId', ...soloOwner, controller.obtenerMiProduct
 misProductosRouter.put(
   '/:productoId',
   ...soloOwner,
+  uploadSingle,
   validar(ActualizarProductoSchema),
   controller.actualizar
 );
